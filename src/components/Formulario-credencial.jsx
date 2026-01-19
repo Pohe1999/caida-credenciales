@@ -46,7 +46,8 @@ export default function RegistroForm() {
     setMostrarResultados(true);
     
     try {
-      const response = await fetch('http://localhost:3002/api/buscar-persona', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const response = await fetch(`${API_URL}/api/buscar-persona`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +162,8 @@ export default function RegistroForm() {
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const response = await fetch('http://localhost:3002/api/registro-credencial', {
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+          const response = await fetch(`${API_URL}/api/registro-credencial`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

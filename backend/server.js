@@ -168,7 +168,7 @@ const PersonaPrioritaria = mongoose.model('PersonaPrioritaria', PersonaPrioritar
 // Endpoint para buscar personas en MongoDB
 app.post('/api/buscar-persona', async (req, res) => {
   try {
-    const { nombre } = req.body;
+    const { nombre, sp } = req.body;
     
     if (!nombre || nombre.trim().length < 2) {
       return res.json({
@@ -178,12 +178,21 @@ app.post('/api/buscar-persona', async (req, res) => {
       });
     }
 
+    if (!sp) {
+      return res.json({
+        success: false,
+        resultados: [],
+        mensaje: 'Debes seleccionar un SP'
+      });
+    }
+
     // Normalizar texto de búsqueda
     const busqueda = nombre.trim();
     
-    // Buscar en MongoDB usando regex para búsqueda parcial (insensible a mayúsculas)
+    // Buscar en MongoDB usando regex para búsqueda parcial (insensible a mayúsculas) y filtrar por SP
     const resultados = await PersonaPrioritaria.find({
-      nombreCompleto: { $regex: busqueda, $options: 'i' }
+      nombreCompleto: { $regex: busqueda, $options: 'i' },
+      sp: parseInt(sp)
     })
     .limit(10)
     .select('nombreCompleto cargo seccion sp curp -_id')

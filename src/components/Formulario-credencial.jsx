@@ -15,6 +15,7 @@ export default function RegistroForm() {
   const [fotoConfirmada, setFotoConfirmada] = useState(false);
 
   // Estados para búsqueda de personas
+  const [spSeleccionado, setSpSeleccionado] = useState('');
   const [busquedaNombre, setBusquedaNombre] = useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
   const [buscando, setBuscando] = useState(false);
@@ -35,6 +36,11 @@ export default function RegistroForm() {
 
   // Función para buscar personas en el Excel
   const buscarPersona = async (nombre) => {
+    if (!spSeleccionado) {
+      setMensajeBusqueda('Selecciona un SP primero');
+      return;
+    }
+
     if (!nombre || nombre.trim().length < 2) {
       setResultadosBusqueda([]);
       setMensajeBusqueda('');
@@ -52,7 +58,7 @@ export default function RegistroForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ nombre: nombre.trim() })
+        body: JSON.stringify({ nombre: nombre.trim(), sp: parseInt(spSeleccionado) })
       });
       
       const result = await response.json();
@@ -221,13 +227,63 @@ export default function RegistroForm() {
   };
 
   return (
-    <div className="min-h-screen bg-blue-100/30 flex justify-center items-center p-4">
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white/70 backdrop-blur-md p-6 rounded-xl shadow-lg w-full max-w-lg">
-        <h2 className="text-2xl font-bold text-blue-800 mb-6 text-center">Registro de tarjetas</h2>
+    <div className="min-h-screen bg-gray-50 flex justify-center items-center p-4" style={{fontFamily: 'Verdana, sans-serif'}}>
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg border border-gray-200">
+        <h2 className="text-2xl font-bold text-[#8B1538] mb-6 text-center">Registro de tarjetas</h2>
+
+        {/* Selector de SP */}
+        <div className="mb-6">
+          <label className="text-[#8B1538] font-semibold block mb-3 text-sm uppercase tracking-wide">
+            Selecciona el SP
+          </label>
+          <div className="relative">
+            <select
+              value={spSeleccionado}
+              onChange={(e) => {
+                setSpSeleccionado(e.target.value);
+                setBusquedaNombre('');
+                setPersonaSeleccionada(null);
+                setResultadosBusqueda([]);
+                setMensajeBusqueda('');
+              }}
+              className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-300 focus:ring-2 focus:ring-[#991B3A] focus:border-[#991B3A] focus:outline-none bg-white text-gray-700 font-medium transition-all duration-300 hover:border-[#C72044] cursor-pointer appearance-none shadow-sm"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238B1538'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.75rem center',
+                backgroundSize: '1.5rem'
+              }}
+            >
+              <option value="" className="text-gray-400">-- Selecciona un SP --</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                <option key={num} value={num} className="py-2">
+                  SP {num}
+                </option>
+              ))}
+            </select>
+            {spSeleccionado && (
+              <div className="absolute right-12 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                </span>
+              </div>
+            )}
+          </div>
+          {spSeleccionado && (
+            <p className="text-xs text-green-600 mt-2 flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+              </svg>
+              SP {spSeleccionado} seleccionado
+            </p>
+          )}
+        </div>
 
         {/* Buscador de Personas */}
         <div className="mb-6">
-          <label className="text-blue-800 font-semibold block mb-2">Buscar Persona:</label>
+          <label className="text-[#8B1538] font-semibold block mb-2">Buscar Persona:</label>
           <div className="relative">
             <input
               type="text"
@@ -243,18 +299,21 @@ export default function RegistroForm() {
                   setMostrarResultados(true);
                 }
               }}
-              placeholder="Escribe el nombre o apellido..."
+              placeholder={spSeleccionado ? "Escribe el nombre o apellido..." : "Primero selecciona un SP"}
+              disabled={!spSeleccionado}
               className={`w-full p-3 rounded-lg border transition-all duration-300 ${
-                personaSeleccionada
-                  ? 'border-green-500 focus:ring-green-500 focus:border-green-500 bg-green-50'
-                  : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-              } focus:outline-none focus:ring-2 bg-white/90 text-gray-700 placeholder-gray-400`}
+                !spSeleccionado 
+                  ? 'bg-gray-100 cursor-not-allowed border-gray-300'
+                  : personaSeleccionada
+                    ? 'border-green-500 focus:ring-green-500 focus:border-green-500 bg-green-50'
+                    : 'border-gray-300 focus:ring-[#991B3A] focus:border-[#991B3A]'
+              } focus:outline-none focus:ring-2 bg-white text-gray-700 placeholder-gray-400`}
             />
             
             {/* Indicador de estado en el input */}
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               {buscando ? (
-                <FaSpinner className="animate-spin text-blue-500" />
+                <FaSpinner className="animate-spin text-[#991B3A]" />
               ) : personaSeleccionada ? (
                 <FaUserCheck className="text-green-500" />
               ) : (
@@ -273,14 +332,14 @@ export default function RegistroForm() {
                 </div>
               ) : resultadosBusqueda.length > 0 ? (
                 <>
-                  <div className="p-2 bg-blue-50 border-b border-gray-200 text-sm text-gray-600">
+                  <div className="p-2 bg-gray-100 border-b border-gray-200 text-sm text-gray-600">
                     {mensajeBusqueda}
                   </div>
                   {resultadosBusqueda.map((persona, index) => (
                     <div
                       key={index}
                       onClick={() => seleccionarPersona(persona)}
-                      className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 transition-colors"
+                      className="p-3 hover:bg-[#FFF5F7] cursor-pointer border-b border-gray-100 transition-colors"
                     >
                       <div className="font-semibold text-gray-800">{persona.nombreCompleto}</div>
                       <div className="text-sm text-gray-600 mt-1">
@@ -336,7 +395,7 @@ export default function RegistroForm() {
                   setPersonaSeleccionada(null);
                   setBusquedaNombre('');
                 }}
-                className="text-blue-600 text-sm underline hover:text-blue-800 mt-2"
+                className="text-[#991B3A] text-sm underline hover:text-[#8B1538] mt-2"
               >
                 Buscar otra persona
               </button>
@@ -344,7 +403,12 @@ export default function RegistroForm() {
           )}
 
           {/* Instrucciones */}
-          {!personaSeleccionada && busquedaNombre.trim().length < 2 && (
+          {!personaSeleccionada && !spSeleccionado && (
+            <p className="text-sm text-gray-600 mt-2">
+              💡 Primero selecciona un SP
+            </p>
+          )}
+          {!personaSeleccionada && spSeleccionado && busquedaNombre.trim().length < 2 && (
             <p className="text-sm text-gray-600 mt-2">
               💡 Escribe al menos 2 caracteres para buscar
             </p>
@@ -353,20 +417,20 @@ export default function RegistroForm() {
 
         {/* Foto de Credencial */}
         <div className="mb-6">
-          <label className="text-blue-800 font-semibold block mb-3 text-center text-lg">Foto de comprobación</label>
+          <label className="text-[#8B1538] font-semibold block mb-3 text-center text-lg">Foto de comprobación</label>
           <p className="text-gray-600 text-sm text-center mb-4">La foto debe ser clara y legible</p>
           {!showCam && (
             <button 
               type="button" 
               onClick={() => setShowCam(true)} 
-              className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 text-lg font-semibold"
+              className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-lg font-semibold"
             >
               📷 Abrir Cámara para Tomar comprobación
             </button>
           )}
           {showCam && (
             <div className="flex flex-col items-center">
-              <div className="relative w-full max-w-sm aspect-2/3 border-4 border-blue-600 rounded-lg overflow-hidden mb-4 shadow-lg">
+              <div className="relative w-full max-w-sm aspect-2/3 border-4 border-[#991B3A] rounded-lg overflow-hidden mb-4 shadow-lg">
                 <Webcam
                   audio={false}
                   ref={webcamRef}
@@ -374,9 +438,9 @@ export default function RegistroForm() {
                   className="w-full h-full object-cover"
                 />
                 {/* Guía visual para alineación */}
-                <div className="absolute inset-2 border-2 border-blue-300 border-dashed rounded-md pointer-events-none opacity-60"></div>
+                <div className="absolute inset-2 border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
                 <div className="absolute top-2 left-2 right-2 text-center">
-                  <span className="bg-blue-800/80 text-white text-xs px-2 py-1 rounded">
+                  <span className="bg-[#8B1538]/80 text-white text-xs px-2 py-1 rounded">
                     Coloca la tarjeta aquí
                   </span>
                 </div>
@@ -385,7 +449,7 @@ export default function RegistroForm() {
                 <button
                   type="button"
                   onClick={() => capture(webcamRef, setImgCredencial, setFotoConfirmada, setShowCam, 'credencial.jpg')}
-                  className="bg-blue-700 text-white py-3 px-6 rounded-lg hover:bg-blue-800 transition-colors duration-300 font-semibold"
+                  className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold"
                 >
                   📸 Capturar
                 </button>
@@ -401,14 +465,14 @@ export default function RegistroForm() {
           )}
           {fotoConfirmada && (
             <div className="text-center mt-4">
-              <p className="text-blue-700 font-medium">✅ Tarjeta capturada correctamente</p>
+              <p className="text-[#991B3A] font-medium">✅ Tarjeta capturada correctamente</p>
               <button
                 type="button"
                 onClick={() => {
                   setFotoConfirmada(false);
                   setImgCredencial(null);
                 }}
-                className="text-blue-600 text-sm underline hover:text-blue-800 mt-2"
+                className="text-[#991B3A] text-sm underline hover:text-[#8B1538] mt-2"
               >
                 Tomar otra foto
               </button>
@@ -421,7 +485,7 @@ export default function RegistroForm() {
           {loading ? (
             <button
               type="button"
-              className="w-full bg-blue-700 text-white py-3 px-4 rounded-lg flex items-center justify-center opacity-75 cursor-not-allowed transition-all duration-300"
+              className="w-full bg-[#991B3A] text-white py-3 px-4 rounded-lg flex items-center justify-center opacity-75 cursor-not-allowed transition-all duration-300"
               disabled
             >
               <FaSpinner className="animate-spin mr-2 text-lg" />
@@ -433,7 +497,7 @@ export default function RegistroForm() {
               disabled={!personaSeleccionada || !fotoConfirmada}
               className={`w-full py-3 px-4 rounded-lg font-semibold text-lg shadow-md transition-all duration-300 flex items-center justify-center ${
                 personaSeleccionada && fotoConfirmada
-                  ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white hover:from-blue-600 hover:to-blue-500 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                  ? 'bg-gradient-to-r from-[#8B1538] to-[#991B3A] text-white hover:from-[#991B3A] hover:to-[#C72044] hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#991B3A] focus:ring-offset-2'
                   : 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'
               }`}
             >
@@ -455,7 +519,7 @@ export default function RegistroForm() {
 
         {mensaje && (
           <div className="text-center">
-            <p className="text-blue-800 font-medium">{mensaje}</p>
+            <p className="text-[#8B1538] font-medium">{mensaje}</p>
           </div>
         )}
       </form>

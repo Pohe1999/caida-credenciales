@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "functions"
+
+[build.environment]
+  # Esta variable debe configurarse también en el dashboard de Netlify
+  VITE_API_URL = "https://caida-credenciales.onrender.com"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[dev]
+  command = "npm run dev"
+  port = 5173

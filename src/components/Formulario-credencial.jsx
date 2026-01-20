@@ -353,15 +353,15 @@ export default function RegistroForm() {
 
         {/* Foto de Credencial */}
         <div className="mb-6">
-          <label className="text-blue-800 font-semibold block mb-3 text-center text-lg">Foto de la tarjeta</label>
-          <p className="text-gray-600 text-sm text-center mb-4">Coloca la tarjeta dentro del recuadro de forma vertical</p>
+          <label className="text-blue-800 font-semibold block mb-3 text-center text-lg">Foto de comprobación</label>
+          <p className="text-gray-600 text-sm text-center mb-4">La foto debe ser clara y legible</p>
           {!showCam && (
             <button 
               type="button" 
               onClick={() => setShowCam(true)} 
               className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 text-lg font-semibold"
             >
-              📷 Abrir Cámara para Tarjeta
+              📷 Abrir Cámara para Tomar comprobación
             </button>
           )}
           {showCam && (

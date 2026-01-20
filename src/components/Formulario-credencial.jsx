@@ -229,7 +229,7 @@ export default function RegistroForm() {
   return (
     <div className="min-h-screen bg-gray-50 flex justify-center items-center p-4" style={{fontFamily: 'Verdana, sans-serif'}}>
       <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg border border-gray-200">
-        <h2 className="text-2xl font-bold text-[#8B1538] mb-6 text-center">Registro de tarjetas</h2>
+        <h2 className="text-xl md:text-3xl font-bold text-[#8B1538] mb-6 text-center">Registro de tarjetas</h2>
 
         {/* Selector de SP */}
         <div className="mb-6">
@@ -257,7 +257,7 @@ export default function RegistroForm() {
               <option value="" className="text-gray-400">-- Selecciona un SP --</option>
               {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
                 <option key={num} value={num} className="py-2">
-                  SP {num}
+                  {num}
                 </option>
               ))}
             </select>
@@ -283,7 +283,7 @@ export default function RegistroForm() {
 
         {/* Buscador de Personas */}
         <div className="mb-6">
-          <label className="text-[#8B1538] font-semibold block mb-2">Buscar Persona:</label>
+          <label className="text-[#8B1538] font-semibold block mb-2 text-sm md:text-base">Buscar Persona:</label>
           <div className="relative">
             <input
               type="text"
@@ -301,7 +301,7 @@ export default function RegistroForm() {
               }}
               placeholder={spSeleccionado ? "Escribe el nombre o apellido..." : "Primero selecciona un SP"}
               disabled={!spSeleccionado}
-              className={`w-full p-3 rounded-lg border transition-all duration-300 ${
+              className={`w-full px-3.5 py-3 rounded-lg border transition-all duration-300 text-sm md:text-base ${
                 !spSeleccionado 
                   ? 'bg-gray-100 cursor-not-allowed border-gray-300'
                   : personaSeleccionada
@@ -324,7 +324,7 @@ export default function RegistroForm() {
 
           {/* Resultados de búsqueda */}
           {mostrarResultados && !personaSeleccionada && busquedaNombre.trim().length >= 2 && (
-            <div className="absolute z-10 w-full max-w-lg mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+            <div className="absolute z-10 left-1/2 transform -translate-x-1/2 w-11/12 max-w-lg mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
               {buscando ? (
                 <div className="p-4 text-center text-gray-600">
                   <FaSpinner className="animate-spin inline mr-2" />
@@ -332,7 +332,7 @@ export default function RegistroForm() {
                 </div>
               ) : resultadosBusqueda.length > 0 ? (
                 <>
-                  <div className="p-2 bg-gray-100 border-b border-gray-200 text-sm text-gray-600">
+                  <div className="p-2 bg-gray-100 border-b border-gray-200 text-xs md:text-sm text-gray-600">
                     {mensajeBusqueda}
                   </div>
                   {resultadosBusqueda.map((persona, index) => (
@@ -341,11 +341,11 @@ export default function RegistroForm() {
                       onClick={() => seleccionarPersona(persona)}
                       className="p-3 hover:bg-[#FFF5F7] cursor-pointer border-b border-gray-100 transition-colors"
                     >
-                      <div className="font-semibold text-gray-800">{persona.nombreCompleto}</div>
-                      <div className="text-sm text-gray-600 mt-1">
+                      <div className="font-semibold text-gray-800 text-sm md:text-base">{persona.nombreCompleto}</div>
+                      <div className="text-xs md:text-sm text-gray-600 mt-1">
                         <span className="font-medium">Cargo:</span> {persona.cargo || 'N/A'}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs md:text-sm text-gray-500 mt-1">
                         <span className="mr-3">
                           <span className="font-medium">Sección:</span> {persona.seccion || 'N/A'}
                         </span>

@@ -9,10 +9,16 @@ export default function RegistroForm() {
   const [loading, setLoading] = useState(false);
 
   const webcamRef = useRef(null);
+  const webcamRefComprobacion = useRef(null);
 
   const [imgCredencial, setImgCredencial] = useState(null);
   const [showCam, setShowCam] = useState(false);
   const [fotoConfirmada, setFotoConfirmada] = useState(false);
+
+  // Estados para foto de comprobación de entrega
+  const [imgComprobacion, setImgComprobacion] = useState(null);
+  const [showCamComprobacion, setShowCamComprobacion] = useState(false);
+  const [fotoComprobacionConfirmada, setFotoComprobacionConfirmada] = useState(false);
 
   // Estados para búsqueda de personas
   const [spSeleccionado, setSpSeleccionado] = useState('');
@@ -26,12 +32,98 @@ export default function RegistroForm() {
   // Timeout para búsqueda con delay
   const [searchTimeout, setSearchTimeout] = useState(null);
 
+  // Estados para registro de persona nueva
+  const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
+  const [nombreNuevo, setNombreNuevo] = useState('');
+  const [curpNuevo, setCurpNuevo] = useState('');
+  const [spNuevo, setSpNuevo] = useState('');
+  const [registrandoNuevo, setRegistrandoNuevo] = useState(false);
+  const [errorCurp, setErrorCurp] = useState('');
+
   const videoConstraints = {
     width: { ideal: 1920, max: 1920 },
     height: { ideal: 1080, max: 1080 },
     facingMode: 'environment',
     frameRate: { ideal: 30, max: 60 },
     focusMode: 'continuous',
+  };
+
+  // Función para validar formato de CURP mexicano
+  const validarCURP = (curp) => {
+    const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2}$/;
+    return curpRegex.test(curp.toUpperCase());
+  };
+
+  // Función para registrar persona nueva
+  const registrarPersonaNueva = async () => {
+    if (!nombreNuevo.trim()) {
+      setErrorCurp('El nombre completo es requerido');
+      return;
+    }
+
+    if (!curpNuevo.trim()) {
+      setErrorCurp('El CURP es requerido');
+      return;
+    }
+
+    if (!validarCURP(curpNuevo)) {
+      setErrorCurp('El formato del CURP no es válido. Debe tener 18 caracteres');
+      return;
+    }
+
+    if (!spNuevo) {
+      setErrorCurp('Debes seleccionar un SP');
+      return;
+    }
+
+    setRegistrandoNuevo(true);
+    setErrorCurp('');
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const response = await fetch(`${API_URL}/api/persona-nueva`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombreCompleto: nombreNuevo.trim(),
+          curp: curpNuevo.trim(),
+          sp: parseInt(spNuevo)
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMensaje('✅ Usuario registrado exitosamente. Ahora puedes tomar las fotos de comprobación.');
+        
+        setPersonaSeleccionada({
+          nombreCompleto: result.persona.nombreCompleto,
+          curp: result.persona.curp,
+          sp: result.persona.sp,
+          cargo: '',
+          seccion: 0
+        });
+
+        setNombreNuevo('');
+        setCurpNuevo('');
+        setSpNuevo('');
+        setMostrarFormNuevo(false);
+        setBusquedaNombre(result.persona.nombreCompleto);
+        
+        setTimeout(() => {
+          setMensaje('');
+        }, 3000);
+      } else {
+        setErrorCurp(result.error || 'Error al registrar persona');
+      }
+    } catch (error) {
+      console.error('Error registrando persona nueva:', error);
+      setErrorCurp('Error de conexión con el servidor');
+    } finally {
+      setRegistrandoNuevo(false);
+    }
   };
 
   // Función para buscar personas en el Excel
@@ -155,7 +247,12 @@ export default function RegistroForm() {
     }
 
     if (!imgCredencial) {
-      setMensaje('Debes capturar la foto de la credencial.');
+      setMensaje('❌ Debes capturar la foto de la tarjeta.');
+      return;
+    }
+
+    if (!imgComprobacion) {
+      setMensaje('❌ Debes capturar la foto de comprobación de entrega.');
       return;
     }
 
@@ -164,61 +261,79 @@ export default function RegistroForm() {
     try {
       const folio = generateFolio();
       
-      // Convertir imagen a base64 para enviar al backend
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
-          const response = await fetch(`${API_URL}/api/registro-credencial`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              folio,
-              curp: personaSeleccionada.curp || busquedaNombre, // Usar CURP si existe, sino el nombre
-              credencial: reader.result, // base64
-              nombreCompleto: personaSeleccionada.nombreCompleto,
-              cargo: personaSeleccionada.cargo,
-              seccion: personaSeleccionada.seccion,
-              sp: personaSeleccionada.sp
-            })
-          });
+      // Convertir imágenes a base64 para enviar al backend
+      const readerCredencial = new FileReader();
+      const readerComprobacion = new FileReader();
+      
+      let credencialBase64 = '';
+      let comprobacionBase64 = '';
+      
+      // Leer primera imagen
+      readerCredencial.onload = () => {
+        credencialBase64 = readerCredencial.result;
+        
+        // Leer segunda imagen
+        readerComprobacion.onload = async () => {
+          comprobacionBase64 = readerComprobacion.result;
           
-          const result = await response.json();
-          
-          if (result.success) {
-            setMensaje(`✅ Registro exitoso. Folio: ${result.folio}`);
-            setTimeout(() => {
-              reset();
-              setImgCredencial(null);
-              setFotoConfirmada(false);
-              setShowCam(false);
-              setMensaje('');
-              setBusquedaNombre('');
-              setPersonaSeleccionada(null);
-              setResultadosBusqueda([]);
-              setMensajeBusqueda('');
-            }, 3000);
-          } else {
-            setMensaje(`❌ ${result.error}`);
+          try {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+            const response = await fetch(`${API_URL}/api/registro-credencial`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                folio,
+                curp: personaSeleccionada.curp || busquedaNombre,
+                credencial: credencialBase64,
+                comprobacion: comprobacionBase64,
+                nombreCompleto: personaSeleccionada.nombreCompleto,
+                cargo: personaSeleccionada.cargo,
+                seccion: personaSeleccionada.seccion,
+                sp: personaSeleccionada.sp
+              })
+            });
             
-            // Si es error de duplicado, recargar página después de 3 segundos
-            if (result.error && result.error.includes('Ya existe un registro de credencial para')) {
+            const result = await response.json();
+            
+            if (result.success) {
+              setMensaje(`✅ Registro exitoso. Folio: ${result.folio}`);
               setTimeout(() => {
-                window.location.reload();
-              }, 1500);
+                reset();
+                setImgCredencial(null);
+                setFotoConfirmada(false);
+                setShowCam(false);
+                setImgComprobacion(null);
+                setFotoComprobacionConfirmada(false);
+                setShowCamComprobacion(false);
+                setMensaje('');
+                setBusquedaNombre('');
+                setPersonaSeleccionada(null);
+                setResultadosBusqueda([]);
+                setMensajeBusqueda('');
+              }, 3000);
+            } else {
+              setMensaje(`❌ ${result.error}`);
+              
+              if (result.error && result.error.includes('Ya existe un registro de credencial para')) {
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1500);
+              }
             }
+          } catch (error) {
+            console.error('Error enviando al backend:', error);
+            setMensaje('❌ Error al conectar con el servidor');
+          } finally {
+            setLoading(false);
           }
-        } catch (error) {
-          console.error('Error enviando al backend:', error);
-          setMensaje('❌ Error al conectar con el servidor');
-        } finally {
-          setLoading(false);
-        }
+        };
+        
+        readerComprobacion.readAsDataURL(imgComprobacion);
       };
       
-      reader.readAsDataURL(imgCredencial);
+      readerCredencial.readAsDataURL(imgCredencial);
       
     } catch (error) {
       setMensaje('❌ Error al procesar el registro');
@@ -232,10 +347,13 @@ export default function RegistroForm() {
         <h2 className="text-xl md:text-3xl font-bold text-[#8B1538] mb-6 text-center">Registro de tarjetas</h2>
 
         {/* Selector de SP */}
-        <div className="mb-6">
-          <label className="text-[#8B1538] font-semibold block mb-3 text-sm uppercase tracking-wide">
-            Selecciona el SP
-          </label>
+        <div className="mb-6 pb-6 border-b-2 border-gray-100">
+          <div className="flex items-center gap-2 mb-3">
+            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${spSeleccionado ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>1</span>
+            <label className="text-[#8B1538] font-semibold text-sm uppercase tracking-wide">
+              Selecciona el SP
+            </label>
+          </div>
           <div className="relative">
             <select
               value={spSeleccionado}
@@ -254,7 +372,7 @@ export default function RegistroForm() {
                 backgroundSize: '1.5rem'
               }}
             >
-              <option value="" className="text-gray-400">-- Selecciona un SP --</option>
+              <option value="" className="text-gray-400"> Selecciona un SP </option>
               {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
                 <option key={num} value={num} className="py-2">
                   {num}
@@ -282,8 +400,11 @@ export default function RegistroForm() {
         </div>
 
         {/* Buscador de Personas */}
-        <div className="mb-6">
-          <label className="text-[#8B1538] font-semibold block mb-2 text-sm md:text-base">Buscar Persona:</label>
+        <div className={`mb-6 pb-6 border-b-2 border-gray-100 transition-all duration-300 ${!spSeleccionado ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${personaSeleccionada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>2</span>
+            <label className="text-[#8B1538] font-semibold text-sm md:text-base">Buscar Persona</label>
+          </div>
           <div className="relative">
             <input
               type="text"
@@ -413,19 +534,165 @@ export default function RegistroForm() {
               💡 Escribe al menos 2 caracteres para buscar
             </p>
           )}
+
+          {/* Botón discreto para registrar persona nueva - siempre visible */}
+          {!personaSeleccionada && (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarFormNuevo(true);
+                  setMostrarResultados(false);
+                  setBusquedaNombre('');
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-medium shadow-sm bg-[#FFF5F7] text-[#8B1538] border-[#F5D0DA] hover:bg-[#FCE7EF] hover:border-[#F0B3C3] hover:shadow transition-colors"
+                title="¿No aparece en la lista? Registrar persona"
+              >
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#8B1538] text-white text-[10px] font-bold">?</span>
+                ¿No aparece en la lista? Registrar persona
+              </button>
+            </div>
+          )}
+
+          {/* Formulario para registrar persona nueva */}
+          {mostrarFormNuevo && !personaSeleccionada && (
+            <div className="mt-4 p-4 bg-blue-50 border-2 border-[#8B1538] rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[#8B1538] font-bold text-lg">📝 Registrar Nueva Persona</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarFormNuevo(false);
+                    setNombreNuevo('');
+                    setCurpNuevo('');
+                    setSpNuevo('');
+                    setErrorCurp('');
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {/* Selector de SP para persona nueva */}
+                <div>
+                  <label className="text-gray-700 font-semibold block mb-1 text-sm">
+                    SP: <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={spNuevo}
+                    onChange={(e) => {
+                      setSpNuevo(e.target.value);
+                      setErrorCurp('');
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none text-sm"
+                  >
+                    <option value="">Selecciona un SP</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                      <option key={num} value={num}>{num}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Campo Nombre Completo */}
+                <div>
+                  <label className="text-gray-700 font-semibold block mb-1 text-sm">
+                    Nombre Completo: <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nombreNuevo}
+                    onChange={(e) => {
+                      setNombreNuevo(e.target.value.toUpperCase());
+                      setErrorCurp('');
+                    }}
+                    placeholder="NOMBRE COMPLETO EN MAYÚSCULAS"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none uppercase text-sm"
+                  />
+                </div>
+
+                {/* Campo CURP */}
+                <div>
+                  <label className="text-gray-700 font-semibold block mb-1 text-sm">
+                    CURP: <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={curpNuevo}
+                    onChange={(e) => {
+                      const valor = e.target.value.toUpperCase().slice(0, 18);
+                      setCurpNuevo(valor);
+                      setErrorCurp('');
+                      
+                      if (valor.length === 18 && !validarCURP(valor)) {
+                        setErrorCurp('Formato de CURP inválido');
+                      }
+                    }}
+                    placeholder="18 CARACTERES"
+                    maxLength="18"
+                    className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:outline-none uppercase text-sm ${
+                      errorCurp && curpNuevo.length > 0
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-[#8B1538] focus:border-[#8B1538]'
+                    }`}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Formato: 4 letras, 6 números, H o M, 5 letras, 2 alfanuméricos
+                  </p>
+                  {curpNuevo.length > 0 && (
+                    <p className={`text-xs mt-1 ${validarCURP(curpNuevo) ? 'text-green-600' : 'text-orange-600'}`}>
+                      {curpNuevo.length}/18 caracteres {validarCURP(curpNuevo) ? '✓ Válido' : ''}
+                    </p>
+                  )}
+                </div>
+
+                {/* Mensaje de error */}
+                {errorCurp && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
+                    ⚠️ {errorCurp}
+                  </div>
+                )}
+
+                {/* Botón de registro */}
+                <button
+                  type="button"
+                  onClick={registrarPersonaNueva}
+                  disabled={registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo}
+                  className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-colors ${
+                    registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo
+                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  {registrandoNuevo ? (
+                    <>
+                      <FaSpinner className="animate-spin inline mr-2" />
+                      Registrando...
+                    </>
+                  ) : (
+                    '✓ Registrar y Continuar'
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Foto de Credencial */}
-        <div className="mb-6">
-          <label className="text-[#8B1538] font-semibold block mb-3 text-center text-lg">Foto de comprobación</label>
-          <p className="text-gray-600 text-sm text-center mb-4">La foto debe ser clara y legible</p>
+        {/* Foto de Tarjeta */}
+        <div className={`mb-6 pb-6 border-b-2 border-gray-100 transition-all duration-300 ${!personaSeleccionada ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${fotoConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>3</span>
+            <label className="text-[#8B1538] font-semibold text-base">Foto de Tarjeta</label>
+          </div>
+          <p className="text-gray-600 text-sm mb-4 ml-10">Toma una foto clara de la tarjeta</p>
           {!showCam && (
             <button 
               type="button" 
               onClick={() => setShowCam(true)} 
               className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-lg font-semibold"
             >
-              📷 Abrir Cámara para Tomar comprobación
+              📷 Abrir Cámara para Tomar Foto de Tarjeta
             </button>
           )}
           {showCam && (
@@ -448,7 +715,7 @@ export default function RegistroForm() {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => capture(webcamRef, setImgCredencial, setFotoConfirmada, setShowCam, 'credencial.jpg')}
+                  onClick={() => capture(webcamRef, setImgCredencial, setFotoConfirmada, setShowCam, 'tarjeta.jpg')}
                   className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold"
                 >
                   📸 Capturar
@@ -465,7 +732,7 @@ export default function RegistroForm() {
           )}
           {fotoConfirmada && (
             <div className="text-center mt-4">
-              <p className="text-[#991B3A] font-medium">✅ Tarjeta capturada correctamente</p>
+              <p className="text-[#991B3A] font-medium">✅ Foto de tarjeta capturada correctamente</p>
               <button
                 type="button"
                 onClick={() => {
@@ -480,8 +747,82 @@ export default function RegistroForm() {
           )}
         </div>
 
+        {/* Foto de Comprobación de Entrega - Solo aparece después de la primera foto */}
+        {fotoConfirmada && (
+          <div className="mb-6 pb-6 border-b-2 border-gray-100 animate-fadeIn">
+            <div className="flex items-center gap-2 mb-3">
+              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${fotoComprobacionConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>4</span>
+              <label className="text-[#8B1538] font-semibold text-base">Foto de Comprobación</label>
+            </div>
+            <p className="text-gray-600 text-sm mb-4 ml-10">Toma una foto clara del comprobante de entrega</p>
+            {!showCamComprobacion && (
+              <button 
+                type="button" 
+                onClick={() => setShowCamComprobacion(true)} 
+                className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-lg font-semibold"
+              >
+                📷 Abrir Cámara para Tomar Foto de Comprobación
+              </button>
+            )}
+            {showCamComprobacion && (
+              <div className="flex flex-col items-center">
+                <div className="relative w-full max-w-sm aspect-2/3 border-4 border-[#991B3A] rounded-lg overflow-hidden mb-4 shadow-lg">
+                  <Webcam
+                    audio={false}
+                    ref={webcamRefComprobacion}
+                    videoConstraints={videoConstraints}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Guía visual para alineación */}
+                  <div className="absolute inset-2 border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
+                  <div className="absolute top-2 left-2 right-2 text-center">
+                    <span className="bg-[#8B1538]/80 text-white text-xs px-2 py-1 rounded">
+                      Coloca el comprobante aquí
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => capture(webcamRefComprobacion, setImgComprobacion, setFotoComprobacionConfirmada, setShowCamComprobacion, 'comprobacion.jpg')}
+                    className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold"
+                  >
+                    📸 Capturar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCamComprobacion(false)}
+                    className="bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors duration-300"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+            {fotoComprobacionConfirmada && (
+              <div className="text-center mt-4">
+                <p className="text-[#991B3A] font-medium">✅ Foto de comprobación capturada correctamente</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFotoComprobacionConfirmada(false);
+                    setImgComprobacion(null);
+                  }}
+                  className="text-[#991B3A] text-sm underline hover:text-[#8B1538] mt-2"
+                >
+                  Tomar otra foto
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Botón de Envío */}
-        <div className="mb-4">
+        <div className={`mb-4 transition-all duration-300 ${!personaSeleccionada || !fotoConfirmada || !fotoComprobacionConfirmada ? 'opacity-50' : 'opacity-100'}`}>
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${personaSeleccionada && fotoConfirmada && fotoComprobacionConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>5</span>
+            <h3 className="text-[#8B1538] font-semibold text-base">Finalizar Registro</h3>
+          </div>
           {loading ? (
             <button
               type="button"
@@ -494,32 +835,22 @@ export default function RegistroForm() {
           ) : (
             <button
               type="submit"
-              disabled={!personaSeleccionada || !fotoConfirmada}
+              disabled={!personaSeleccionada || !fotoConfirmada || !fotoComprobacionConfirmada}
               className={`w-full py-3 px-4 rounded-lg font-semibold text-lg shadow-md transition-all duration-300 flex items-center justify-center ${
-                personaSeleccionada && fotoConfirmada
+                personaSeleccionada && fotoConfirmada && fotoComprobacionConfirmada
                   ? 'bg-gradient-to-r from-[#8B1538] to-[#991B3A] text-white hover:from-[#991B3A] hover:to-[#C72044] hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#991B3A] focus:ring-offset-2'
                   : 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'
               }`}
             >
               <FaCheckCircle className="mr-2" />
-              {!personaSeleccionada ? 'Selecciona un usuario' : !fotoConfirmada ? 'Falta capturar foto' : 'Registrar tarjeta'}
+              {!personaSeleccionada ? 'Selecciona un usuario' : !fotoConfirmada ? 'Falta foto de tarjeta' : !fotoComprobacionConfirmada ? 'Falta foto de comprobación' : 'Registrar tarjeta'}
             </button>
           )}
-          
-          {/* Indicadores de requisitos */}
-          <div className="mt-3 space-y-1 text-xs">
-            <div className={`flex items-center ${personaSeleccionada ? 'text-green-600' : 'text-gray-500'}`}>
-              {personaSeleccionada ? '✅' : '⏳'} Usuario seleccionado de la lista
-            </div>
-            <div className={`flex items-center ${fotoConfirmada ? 'text-green-600' : 'text-gray-500'}`}>
-              {fotoConfirmada ? '✅' : '⏳'} Foto de credencial capturada
-            </div>
-          </div>
         </div>
 
         {mensaje && (
-          <div className="text-center">
-            <p className="text-[#8B1538] font-medium">{mensaje}</p>
+          <div className={`text-center p-4 rounded-lg ${mensaje.includes('✅') ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <p className={`font-medium ${mensaje.includes('✅') ? 'text-green-700' : 'text-red-700'}`}>{mensaje}</p>
           </div>
         )}
       </form>

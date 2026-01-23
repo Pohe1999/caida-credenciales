@@ -534,150 +534,150 @@ export default function RegistroForm() {
               💡 Escribe al menos 2 caracteres para buscar
             </p>
           )}
+        </div>
 
-          {/* Botón discreto para registrar persona nueva - siempre visible */}
-          {!personaSeleccionada && (
-            <div className="mt-3 flex justify-center">
+        {/* Botón discreto para registrar persona nueva - SIEMPRE HABILITADO */}
+        {!personaSeleccionada && (
+          <div className="mb-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                setMostrarFormNuevo(true);
+                setMostrarResultados(false);
+                setBusquedaNombre('');
+              }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-medium shadow-sm bg-[#FFF5F7] text-[#8B1538] border-[#F5D0DA] hover:bg-[#FCE7EF] hover:border-[#F0B3C3] hover:shadow transition-colors"
+              title="¿No aparece en la lista? Registrar persona"
+            >
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#8B1538] text-white text-[10px] font-bold">?</span>
+              ¿No aparece en la lista? Registrar persona
+            </button>
+          </div>
+        )}
+
+        {/* Formulario para registrar persona nueva - SIEMPRE HABILITADO */}
+        {mostrarFormNuevo && !personaSeleccionada && (
+          <div className="mb-6 p-4 bg-blue-50 border-2 border-[#8B1538] rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[#8B1538] font-bold text-lg">📝 Registrar Nueva Persona</h3>
               <button
                 type="button"
                 onClick={() => {
-                  setMostrarFormNuevo(true);
-                  setMostrarResultados(false);
-                  setBusquedaNombre('');
+                  setMostrarFormNuevo(false);
+                  setNombreNuevo('');
+                  setCurpNuevo('');
+                  setSpNuevo('');
+                  setErrorCurp('');
                 }}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-medium shadow-sm bg-[#FFF5F7] text-[#8B1538] border-[#F5D0DA] hover:bg-[#FCE7EF] hover:border-[#F0B3C3] hover:shadow transition-colors"
-                title="¿No aparece en la lista? Registrar persona"
+                className="text-gray-500 hover:text-gray-700"
               >
-                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#8B1538] text-white text-[10px] font-bold">?</span>
-                ¿No aparece en la lista? Registrar persona
+                ✕
               </button>
             </div>
-          )}
 
-          {/* Formulario para registrar persona nueva */}
-          {mostrarFormNuevo && !personaSeleccionada && (
-            <div className="mt-4 p-4 bg-blue-50 border-2 border-[#8B1538] rounded-lg">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[#8B1538] font-bold text-lg">📝 Registrar Nueva Persona</h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMostrarFormNuevo(false);
-                    setNombreNuevo('');
-                    setCurpNuevo('');
-                    setSpNuevo('');
+            <div className="space-y-3">
+              {/* Selector de SP para persona nueva */}
+              <div>
+                <label className="text-gray-700 font-semibold block mb-1 text-sm">
+                  SP: <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={spNuevo}
+                  onChange={(e) => {
+                    setSpNuevo(e.target.value);
                     setErrorCurp('');
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none text-sm"
                 >
-                  ✕
-                </button>
+                  <option value="">Selecciona un SP</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="space-y-3">
-                {/* Selector de SP para persona nueva */}
-                <div>
-                  <label className="text-gray-700 font-semibold block mb-1 text-sm">
-                    SP: <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={spNuevo}
-                    onChange={(e) => {
-                      setSpNuevo(e.target.value);
-                      setErrorCurp('');
-                    }}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none text-sm"
-                  >
-                    <option value="">Selecciona un SP</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                      <option key={num} value={num}>{num}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Campo Nombre Completo */}
+              <div>
+                <label className="text-gray-700 font-semibold block mb-1 text-sm">
+                  Nombre Completo: <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={nombreNuevo}
+                  onChange={(e) => {
+                    setNombreNuevo(e.target.value.toUpperCase());
+                    setErrorCurp('');
+                  }}
+                  placeholder="NOMBRE COMPLETO EN MAYÚSCULAS"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none uppercase text-sm"
+                />
+              </div>
 
-                {/* Campo Nombre Completo */}
-                <div>
-                  <label className="text-gray-700 font-semibold block mb-1 text-sm">
-                    Nombre Completo: <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={nombreNuevo}
-                    onChange={(e) => {
-                      setNombreNuevo(e.target.value.toUpperCase());
-                      setErrorCurp('');
-                    }}
-                    placeholder="NOMBRE COMPLETO EN MAYÚSCULAS"
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none uppercase text-sm"
-                  />
-                </div>
-
-                {/* Campo CURP */}
-                <div>
-                  <label className="text-gray-700 font-semibold block mb-1 text-sm">
-                    CURP: <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={curpNuevo}
-                    onChange={(e) => {
-                      const valor = e.target.value.toUpperCase().slice(0, 18);
-                      setCurpNuevo(valor);
-                      setErrorCurp('');
-                      
-                      if (valor.length === 18 && !validarCURP(valor)) {
-                        setErrorCurp('Formato de CURP inválido');
-                      }
-                    }}
-                    placeholder="18 CARACTERES"
-                    maxLength="18"
-                    className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:outline-none uppercase text-sm ${
-                      errorCurp && curpNuevo.length > 0
-                        ? 'border-red-500 focus:ring-red-500'
-                        : 'border-gray-300 focus:ring-[#8B1538] focus:border-[#8B1538]'
-                    }`}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Formato: 4 letras, 6 números, H o M, 5 letras, 2 alfanuméricos
-                  </p>
-                  {curpNuevo.length > 0 && (
-                    <p className={`text-xs mt-1 ${validarCURP(curpNuevo) ? 'text-green-600' : 'text-orange-600'}`}>
-                      {curpNuevo.length}/18 caracteres {validarCURP(curpNuevo) ? '✓ Válido' : ''}
-                    </p>
-                  )}
-                </div>
-
-                {/* Mensaje de error */}
-                {errorCurp && (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
-                    ⚠️ {errorCurp}
-                  </div>
-                )}
-
-                {/* Botón de registro */}
-                <button
-                  type="button"
-                  onClick={registrarPersonaNueva}
-                  disabled={registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo}
-                  className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-colors ${
-                    registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo
-                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                      : 'bg-green-600 text-white hover:bg-green-700'
+              {/* Campo CURP */}
+              <div>
+                <label className="text-gray-700 font-semibold block mb-1 text-sm">
+                  CURP: <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={curpNuevo}
+                  onChange={(e) => {
+                    const valor = e.target.value.toUpperCase().slice(0, 18);
+                    setCurpNuevo(valor);
+                    setErrorCurp('');
+                    
+                    if (valor.length === 18 && !validarCURP(valor)) {
+                      setErrorCurp('Formato de CURP inválido');
+                    }
+                  }}
+                  placeholder="18 CARACTERES"
+                  maxLength="18"
+                  className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:outline-none uppercase text-sm ${
+                    errorCurp && curpNuevo.length > 0
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-[#8B1538] focus:border-[#8B1538]'
                   }`}
-                >
-                  {registrandoNuevo ? (
-                    <>
-                      <FaSpinner className="animate-spin inline mr-2" />
-                      Registrando...
-                    </>
-                  ) : (
-                    '✓ Registrar y Continuar'
-                  )}
-                </button>
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Formato: 4 letras, 6 números, H o M, 5 letras, 2 alfanuméricos
+                </p>
+                {curpNuevo.length > 0 && (
+                  <p className={`text-xs mt-1 ${validarCURP(curpNuevo) ? 'text-green-600' : 'text-orange-600'}`}>
+                    {curpNuevo.length}/18 caracteres {validarCURP(curpNuevo) ? '✓ Válido' : ''}
+                  </p>
+                )}
               </div>
+
+              {/* Mensaje de error */}
+              {errorCurp && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
+                  ⚠️ {errorCurp}
+                </div>
+              )}
+
+              {/* Botón de registro */}
+              <button
+                type="button"
+                onClick={registrarPersonaNueva}
+                disabled={registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo}
+                className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-colors ${
+                  registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {registrandoNuevo ? (
+                  <>
+                    <FaSpinner className="animate-spin inline mr-2" />
+                    Registrando...
+                  </>
+                ) : (
+                  '✓ Registrar y Continuar'
+                )}
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Foto de Tarjeta */}
         <div className={`mb-6 pb-6 border-b-2 border-gray-100 transition-all duration-300 ${!personaSeleccionada ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>

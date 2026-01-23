@@ -122,6 +122,10 @@ const RegistroCredencialSchema = new mongoose.Schema({
     type: String, // Base64 de la imagen
     required: true
   },
+  imagenComprobacion: {
+    type: String, // Base64 de la imagen de comprobación
+    required: false
+  },
   fechaRegistro: {
     type: Date,
     default: Date.now
@@ -164,6 +168,100 @@ const PersonaPrioritaria = mongoose.model('PersonaPrioritaria', PersonaPrioritar
 // ===========================================
 // RUTAS DE LA API
 // ===========================================
+
+// Endpoint para registrar persona nueva
+app.post('/api/persona-nueva', async (req, res) => {
+  try {
+    const { nombreCompleto, curp, sp } = req.body;
+
+    // Validaciones
+    if (!nombreCompleto || !nombreCompleto.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'El nombre completo es requerido'
+      });
+    }
+
+    if (!curp || !curp.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'El CURP es requerido'
+      });
+    }
+
+    // Validar formato de CURP
+    const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2}$/;
+    if (!curpRegex.test(curp.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        error: 'El formato del CURP no es válido'
+      });
+    }
+
+    if (!sp) {
+      return res.status(400).json({
+        success: false,
+        error: 'El SP es requerido'
+      });
+    }
+
+    console.log(`📝 Registrando nueva persona: ${nombreCompleto} con CURP: ${curp}`);
+
+    // Verificar si ya existe una persona con ese CURP
+    const personaExistente = await PersonaPrioritaria.findOne({ 
+      curp: curp.toUpperCase() 
+    });
+
+    if (personaExistente) {
+      console.log(`⚠️ CURP ya existe: ${curp.toUpperCase()}`);
+      return res.status(409).json({
+        success: false,
+        error: 'Ya existe una persona registrada con este CURP'
+      });
+    }
+
+    // Crear nueva persona
+    const nuevaPersona = new PersonaPrioritaria({
+      nombreCompleto: nombreCompleto.trim().toUpperCase(),
+      curp: curp.trim().toUpperCase(),
+      sp: parseInt(sp),
+      cargo: '',
+      seccion: 0
+    });
+
+    const personaGuardada = await nuevaPersona.save();
+    
+    console.log(`✅ Persona registrada exitosamente: ${personaGuardada.nombreCompleto}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Persona registrada exitosamente',
+      persona: {
+        nombreCompleto: personaGuardada.nombreCompleto,
+        curp: personaGuardada.curp,
+        sp: personaGuardada.sp,
+        cargo: personaGuardada.cargo,
+        seccion: personaGuardada.seccion
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error registrando persona nueva:', error);
+    
+    // Manejar error de duplicado por si acaso
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        error: 'Ya existe una persona con estos datos'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor al registrar persona'
+    });
+  }
+});
 
 // Endpoint para buscar personas en MongoDB
 app.post('/api/buscar-persona', async (req, res) => {
@@ -386,7 +484,7 @@ app.post('/api/validate-curp', async (req, res) => {
 // Registrar credencial (mejorado)
 app.post('/api/registro-credencial', async (req, res) => {
   try {
-    const { folio, curp, credencial, nombreCompleto, cargo, seccion, sp } = req.body;
+    const { folio, curp, credencial, comprobacion, nombreCompleto, cargo, seccion, sp } = req.body;
 
     console.log(`📝 Intentando registrar credencial para: ${nombreCompleto || curp || 'sin identificador'}`);
 
@@ -400,7 +498,7 @@ app.post('/api/registro-credencial', async (req, res) => {
     }
 
     // CURP es opcional; si viene lo almacenamos sin bloquear el flujo
-    const curpRegex = /^[A-Z]{4}\d{6}[A-Z]{6}[A-Z0-9]{2}$/;
+    const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2}$/;
     const tieneCurpValido = curp && curpRegex.test(curp.toUpperCase());
 
     // Verificar que no exista ya un registro con el mismo folio
@@ -435,6 +533,7 @@ app.post('/api/registro-credencial', async (req, res) => {
       seccion: seccion || 0,
       sp: sp || 0,
       imagenCredencial: credencial,
+      imagenComprobacion: comprobacion || '',
       fechaRegistro: new Date(),
       metadata: {
         ipAddress: req.ip || req.connection.remoteAddress,

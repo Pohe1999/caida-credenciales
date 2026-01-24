@@ -7,10 +7,18 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const xlsx = require('xlsx');
 const path = require('path');
+const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Configuración de Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // ===========================================
 // MIDDLEWARES DE SEGURIDAD Y CONFIGURACIÓN
@@ -164,6 +172,21 @@ const PersonaPrioritariaSchema = new mongoose.Schema({
 PersonaPrioritariaSchema.index({ nombreCompleto: 'text' });
 
 const PersonaPrioritaria = mongoose.model('PersonaPrioritaria', PersonaPrioritariaSchema);
+
+// ===========================================
+// HELPERS
+// ===========================================
+
+const uploadBase64ToCloudinary = async (imageBase64, folderName = process.env.CLOUDINARY_FOLDER || 'tarjetas-registro') => {
+  if (!imageBase64) return '';
+
+  const uploadResponse = await cloudinary.uploader.upload(imageBase64, {
+    folder: folderName,
+    resource_type: 'image'
+  });
+
+  return uploadResponse.secure_url;
+};
 
 // ===========================================
 // RUTAS DE LA API
@@ -489,11 +512,11 @@ app.post('/api/registro-credencial', async (req, res) => {
     console.log(`📝 Intentando registrar credencial para: ${nombreCompleto || curp || 'sin identificador'}`);
 
     // Validaciones básicas: el usuario ya fue validado por selección de nombre
-    if (!folio || !credencial || !nombreCompleto) {
+    if (!folio || !credencial || !nombreCompleto || !comprobacion) {
       console.log('❌ Datos incompletos en el registro');
       return res.status(400).json({
         success: false,
-        error: 'Campos requeridos: folio, nombreCompleto, credencial'
+        error: 'Campos requeridos: folio, nombreCompleto, credencial y comprobacion'
       });
     }
 
@@ -523,6 +546,13 @@ app.post('/api/registro-credencial', async (req, res) => {
       });
     }
 
+    // Subir imágenes a Cloudinary
+    const folderName = process.env.CLOUDINARY_FOLDER || 'tarjetas-registro';
+    const [credencialUrl, comprobacionUrl] = await Promise.all([
+      uploadBase64ToCloudinary(credencial, folderName),
+      uploadBase64ToCloudinary(comprobacion, folderName)
+    ]);
+
     // Crear el nuevo registro
     console.log(`💾 Creando nuevo registro con folio: ${folio}`);
     const nuevoRegistro = new RegistroCredencial({
@@ -532,8 +562,8 @@ app.post('/api/registro-credencial', async (req, res) => {
       cargo: cargo || '',
       seccion: seccion || 0,
       sp: sp || 0,
-      imagenCredencial: credencial,
-      imagenComprobacion: comprobacion || '',
+      imagenCredencial: credencialUrl,
+      imagenComprobacion: comprobacionUrl,
       fechaRegistro: new Date(),
       metadata: {
         ipAddress: req.ip || req.connection.remoteAddress,

@@ -10,6 +10,8 @@ export default function RegistroForm() {
 
   const webcamRef = useRef(null);
   const webcamRefComprobacion = useRef(null);
+  const containerRefTarjeta = useRef(null);
+  const containerRefComprobacion = useRef(null);
 
   const [imgCredencial, setImgCredencial] = useState(null);
   const [showCam, setShowCam] = useState(false);
@@ -48,8 +50,7 @@ export default function RegistroForm() {
     focusMode: 'continuous',
   };
 
-  // Margen porcentual para el recuadro de guía (coincide con el recorte)
-  const OVERLAY_MARGIN_RATIO = 0.1; // 10% de margen en cada lado
+  // Recorte exacto al contenedor visible (emulando object-cover)
 
   // Función para validar formato de CURP mexicano
   const validarCURP = (curp) => {
@@ -209,9 +210,10 @@ export default function RegistroForm() {
     setValue('curp', persona.curp || ''); // Si hay CURP en el Excel
   };
 
-  const capture = (ref, setImg, setConfirm, setShow, filename) => {
+  const capture = (ref, containerRef, setImg, setConfirm, setShow, filename) => {
     const video = ref.current?.video;
-    if (!video) return;
+    const container = containerRef?.current;
+    if (!video || !container) return;
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -220,28 +222,32 @@ export default function RegistroForm() {
 
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
+    const containerWidth = Math.max(1, container.clientWidth);
+    const containerHeight = Math.max(1, container.clientHeight);
 
-    // Calcular recorte según margen porcentual
-    const marginX = Math.round(videoWidth * OVERLAY_MARGIN_RATIO);
-    const marginY = Math.round(videoHeight * OVERLAY_MARGIN_RATIO);
-    const cropX = marginX;
-    const cropY = marginY;
-    const cropWidth = Math.max(1, videoWidth - marginX * 2);
-    const cropHeight = Math.max(1, videoHeight - marginY * 2);
+    // Escala de object-cover: el video se escala para llenar el contenedor
+    const scale = Math.max(containerWidth / videoWidth, containerHeight / videoHeight);
 
-    canvas.width = cropWidth;
-    canvas.height = cropHeight;
-    // Recortar del video la región visible del recuadro
+    // Tamaño del área visible (en coordenadas del video)
+    const sourceWidth = Math.round(containerWidth / scale);
+    const sourceHeight = Math.round(containerHeight / scale);
+    const sourceX = Math.max(0, Math.round((videoWidth - sourceWidth) / 2));
+    const sourceY = Math.max(0, Math.round((videoHeight - sourceHeight) / 2));
+
+    // El canvas debe coincidir con el tamaño del contenedor visible
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+
     ctx.drawImage(
       video,
-      cropX, // sx
-      cropY, // sy
-      cropWidth, // sWidth
-      cropHeight, // sHeight
-      0, // dx
-      0, // dy
-      cropWidth, // dWidth
-      cropHeight // dHeight
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      containerWidth,
+      containerHeight
     );
 
     canvas.toBlob(
@@ -719,7 +725,7 @@ export default function RegistroForm() {
           )}
           {showCam && (
             <div className="flex flex-col items-center">
-              <div className="relative w-full max-w-sm aspect-2/3 border-4 border-[#991B3A] rounded-lg overflow-hidden mb-4 shadow-lg">
+              <div ref={containerRefTarjeta} className="relative w-full max-w-sm aspect-2/3 border-4 border-[#991B3A] rounded-lg overflow-hidden mb-4 shadow-lg">
                 <Webcam
                   audio={false}
                   ref={webcamRef}
@@ -727,7 +733,7 @@ export default function RegistroForm() {
                   className="w-full h-full object-cover"
                 />
                 {/* Guía visual para alineación */}
-                <div className="absolute inset-[10%] border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
+                <div className="absolute inset-0 border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
                 <div className="absolute top-2 left-2 right-2 text-center">
                   <span className="bg-[#8B1538]/80 text-white text-xs px-2 py-1 rounded">
                     Coloca la tarjeta aquí
@@ -737,7 +743,7 @@ export default function RegistroForm() {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => capture(webcamRef, setImgCredencial, setFotoConfirmada, setShowCam, 'tarjeta.jpg')}
+                  onClick={() => capture(webcamRef, containerRefTarjeta, setImgCredencial, setFotoConfirmada, setShowCam, 'tarjeta.jpg')}
                   className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold"
                 >
                   📸 Capturar
@@ -788,7 +794,7 @@ export default function RegistroForm() {
             )}
             {showCamComprobacion && (
               <div className="flex flex-col items-center">
-                <div className="relative w-full max-w-sm aspect-2/3 border-4 border-[#991B3A] rounded-lg overflow-hidden mb-4 shadow-lg">
+                <div ref={containerRefComprobacion} className="relative w-full max-w-sm aspect-2/3 border-4 border-[#991B3A] rounded-lg overflow-hidden mb-4 shadow-lg">
                   <Webcam
                     audio={false}
                     ref={webcamRefComprobacion}
@@ -796,7 +802,7 @@ export default function RegistroForm() {
                     className="w-full h-full object-cover"
                   />
                   {/* Guía visual para alineación */}
-                  <div className="absolute inset-[10%] border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
+                  <div className="absolute inset-0 border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
                   <div className="absolute top-2 left-2 right-2 text-center">
                     <span className="bg-[#8B1538]/80 text-white text-xs px-2 py-1 rounded">
                       Coloca el comprobante aquí
@@ -806,7 +812,7 @@ export default function RegistroForm() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => capture(webcamRefComprobacion, setImgComprobacion, setFotoComprobacionConfirmada, setShowCamComprobacion, 'comprobacion.jpg')}
+                    onClick={() => capture(webcamRefComprobacion, containerRefComprobacion, setImgComprobacion, setFotoComprobacionConfirmada, setShowCamComprobacion, 'comprobacion.jpg')}
                     className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold"
                   >
                     📸 Capturar

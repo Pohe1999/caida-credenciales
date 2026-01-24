@@ -20,6 +20,19 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Detección de configuración de Cloudinary
+const CLOUDINARY_ENABLED = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+if (!CLOUDINARY_ENABLED) {
+  console.warn('⚠️ Cloudinary no está configurado. Define CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET en el entorno.');
+} else {
+  console.log('☁️ Cloudinary configurado correctamente. Subidas habilitadas.');
+}
+
 // ===========================================
 // MIDDLEWARES DE SEGURIDAD Y CONFIGURACIÓN
 // ===========================================
@@ -50,6 +63,8 @@ const limiter = rateLimit({
   }
 });
 app.use('/api', limiter);
+// Render y proxies: confiar en cabecera X-Forwarded-For
+app.set('trust proxy', 1);
 
 // Middlewares básicos
 app.use(express.json({ limit: '10mb' }));
@@ -179,6 +194,9 @@ const PersonaPrioritaria = mongoose.model('PersonaPrioritaria', PersonaPrioritar
 
 const uploadBase64ToCloudinary = async (imageBase64, folderName = process.env.CLOUDINARY_FOLDER || 'tarjetas-registro') => {
   if (!imageBase64) return '';
+  if (!CLOUDINARY_ENABLED) {
+    throw new Error('Cloudinary no configurado en entorno');
+  }
 
   const uploadResponse = await cloudinary.uploader.upload(imageBase64, {
     folder: folderName,
@@ -548,10 +566,20 @@ app.post('/api/registro-credencial', async (req, res) => {
 
     // Subir imágenes a Cloudinary
     const folderName = process.env.CLOUDINARY_FOLDER || 'tarjetas-registro';
-    const [credencialUrl, comprobacionUrl] = await Promise.all([
-      uploadBase64ToCloudinary(credencial, folderName),
-      uploadBase64ToCloudinary(comprobacion, folderName)
-    ]);
+    let credencialUrl = '';
+    let comprobacionUrl = '';
+    try {
+      [credencialUrl, comprobacionUrl] = await Promise.all([
+        uploadBase64ToCloudinary(credencial, folderName),
+        uploadBase64ToCloudinary(comprobacion, folderName)
+      ]);
+    } catch (cloudErr) {
+      console.error('❌ Error subiendo a Cloudinary:', cloudErr.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Error al subir imágenes a Cloudinary. Verifica variables de entorno.'
+      });
+    }
 
     // Crear el nuevo registro
     console.log(`💾 Creando nuevo registro con folio: ${folio}`);

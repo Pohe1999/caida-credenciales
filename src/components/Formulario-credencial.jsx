@@ -48,6 +48,9 @@ export default function RegistroForm() {
     focusMode: 'continuous',
   };
 
+  // Margen porcentual para el recuadro de guía (coincide con el recorte)
+  const OVERLAY_MARGIN_RATIO = 0.1; // 10% de margen en cada lado
+
   // Función para validar formato de CURP mexicano
   const validarCURP = (curp) => {
     const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2}$/;
@@ -218,9 +221,28 @@ export default function RegistroForm() {
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
 
-    canvas.width = videoWidth;
-    canvas.height = videoHeight;
-    ctx.drawImage(video, 0, 0);
+    // Calcular recorte según margen porcentual
+    const marginX = Math.round(videoWidth * OVERLAY_MARGIN_RATIO);
+    const marginY = Math.round(videoHeight * OVERLAY_MARGIN_RATIO);
+    const cropX = marginX;
+    const cropY = marginY;
+    const cropWidth = Math.max(1, videoWidth - marginX * 2);
+    const cropHeight = Math.max(1, videoHeight - marginY * 2);
+
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
+    // Recortar del video la región visible del recuadro
+    ctx.drawImage(
+      video,
+      cropX, // sx
+      cropY, // sy
+      cropWidth, // sWidth
+      cropHeight, // sHeight
+      0, // dx
+      0, // dy
+      cropWidth, // dWidth
+      cropHeight // dHeight
+    );
 
     canvas.toBlob(
       blob => {
@@ -705,7 +727,7 @@ export default function RegistroForm() {
                   className="w-full h-full object-cover"
                 />
                 {/* Guía visual para alineación */}
-                <div className="absolute inset-2 border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
+                <div className="absolute inset-[10%] border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
                 <div className="absolute top-2 left-2 right-2 text-center">
                   <span className="bg-[#8B1538]/80 text-white text-xs px-2 py-1 rounded">
                     Coloca la tarjeta aquí
@@ -774,7 +796,7 @@ export default function RegistroForm() {
                     className="w-full h-full object-cover"
                   />
                   {/* Guía visual para alineación */}
-                  <div className="absolute inset-2 border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
+                  <div className="absolute inset-[10%] border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
                   <div className="absolute top-2 left-2 right-2 text-center">
                     <span className="bg-[#8B1538]/80 text-white text-xs px-2 py-1 rounded">
                       Coloca el comprobante aquí

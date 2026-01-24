@@ -372,7 +372,7 @@ export default function RegistroForm() {
   return (
     <div className="min-h-screen bg-gray-50 flex justify-center items-center p-4" style={{fontFamily: 'Verdana, sans-serif'}}>
       <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg border border-gray-200">
-        <h2 className="text-xl md:text-3xl font-bold text-[#8B1538] mb-6 text-center">Registro de tarjetas</h2>
+        <h2 className="text-lg md:text-2xl font-bold text-[#8B1538] mb-6 text-center">Registro de tarjetas</h2>
 
         {/* Selector de SP */}
         <div className="mb-6 pb-6 border-b-2 border-gray-100">
@@ -431,7 +431,7 @@ export default function RegistroForm() {
         <div className={`mb-6 pb-6 border-b-2 border-gray-100 transition-all duration-300 ${!spSeleccionado ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           <div className="flex items-center gap-2 mb-2">
             <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${personaSeleccionada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>2</span>
-            <label className="text-[#8B1538] font-semibold text-sm md:text-base">Buscar Persona</label>
+            <label className="text-[#8B1538] font-semibold text-xs md:text-sm">Buscar Persona</label>
           </div>
           <div className="relative">
             <input
@@ -553,12 +553,12 @@ export default function RegistroForm() {
 
           {/* Instrucciones */}
           {!personaSeleccionada && !spSeleccionado && (
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-xs text-gray-600 mt-2">
               💡 Primero selecciona un SP
             </p>
           )}
           {!personaSeleccionada && spSeleccionado && busquedaNombre.trim().length < 2 && (
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-xs text-gray-600 mt-2">
               💡 Escribe al menos 2 caracteres para buscar
             </p>
           )}
@@ -711,14 +711,14 @@ export default function RegistroForm() {
         <div className={`mb-6 pb-6 border-b-2 border-gray-100 transition-all duration-300 ${!personaSeleccionada ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           <div className="flex items-center gap-2 mb-3">
             <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${fotoConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>3</span>
-            <label className="text-[#8B1538] font-semibold text-base">Foto de Tarjeta</label>
+            <label className="text-[#8B1538] font-semibold text-sm">Foto de Tarjeta</label>
           </div>
-          <p className="text-gray-600 text-sm mb-4 ml-10">Toma una foto clara de la tarjeta</p>
+          <p className="text-gray-600 text-xs mb-4 ml-10">Toma una foto clara de la tarjeta</p>
           {!showCam && (
             <button 
               type="button" 
               onClick={() => setShowCam(true)} 
-              className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-lg font-semibold"
+              className="w-full bg-[#991B3A] text-white py-3 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-base font-semibold"
             >
               📷 Abrir Cámara para Tomar Foto de Tarjeta
             </button>
@@ -744,14 +744,14 @@ export default function RegistroForm() {
                 <button
                   type="button"
                   onClick={() => capture(webcamRef, containerRefTarjeta, setImgCredencial, setFotoConfirmada, setShowCam, 'tarjeta.jpg')}
-                  className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold"
+                  className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold text-sm"
                 >
                   📸 Capturar
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCam(false)}
-                  className="bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors duration-300"
+                  className="bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors duration-300 text-sm"
                 >
                   Cancelar
                 </button>
@@ -780,14 +780,14 @@ export default function RegistroForm() {
           <div className="mb-6 pb-6 border-b-2 border-gray-100 animate-fadeIn">
             <div className="flex items-center gap-2 mb-3">
               <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${fotoComprobacionConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>4</span>
-              <label className="text-[#8B1538] font-semibold text-base">Foto de Comprobación</label>
+              <label className="text-[#8B1538] font-semibold text-sm">Foto de Comprobación</label>
             </div>
-            <p className="text-gray-600 text-sm mb-4 ml-10">Toma una foto clara del comprobante de entrega</p>
+            <p className="text-gray-600 text-xs mb-4 ml-10">Toma una foto clara del comprobante de entrega</p>
             {!showCamComprobacion && (
               <button 
                 type="button" 
                 onClick={() => setShowCamComprobacion(true)} 
-                className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-lg font-semibold"
+                className="w-full bg-[#991B3A] text-white py-3 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-base font-semibold"
               >
                 📷 Abrir Cámara para Tomar Foto de Comprobación
               </button>
@@ -813,14 +813,14 @@ export default function RegistroForm() {
                   <button
                     type="button"
                     onClick={() => capture(webcamRefComprobacion, containerRefComprobacion, setImgComprobacion, setFotoComprobacionConfirmada, setShowCamComprobacion, 'comprobacion.jpg')}
-                    className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold"
+                    className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold text-sm"
                   >
                     📸 Capturar
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowCamComprobacion(false)}
-                    className="bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors duration-300"
+                    className="bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors duration-300 text-sm"
                   >
                     Cancelar
                   </button>
@@ -849,7 +849,7 @@ export default function RegistroForm() {
         <div className={`mb-4 transition-all duration-300 ${!personaSeleccionada || !fotoConfirmada || !fotoComprobacionConfirmada ? 'opacity-50' : 'opacity-100'}`}>
           <div className="flex items-center justify-center gap-2 mb-3">
             <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${personaSeleccionada && fotoConfirmada && fotoComprobacionConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>5</span>
-            <h3 className="text-[#8B1538] font-semibold text-base">Finalizar Registro</h3>
+            <h3 className="text-[#8B1538] font-semibold text-sm">Finalizar Registro</h3>
           </div>
           {loading ? (
             <button
@@ -864,7 +864,7 @@ export default function RegistroForm() {
             <button
               type="submit"
               disabled={!personaSeleccionada || !fotoConfirmada || !fotoComprobacionConfirmada}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-lg shadow-md transition-all duration-300 flex items-center justify-center ${
+              className={`w-full py-3 px-4 rounded-lg font-semibold text-base shadow-md transition-all duration-300 flex items-center justify-center ${
                 personaSeleccionada && fotoConfirmada && fotoComprobacionConfirmada
                   ? 'bg-gradient-to-r from-[#8B1538] to-[#991B3A] text-white hover:from-[#991B3A] hover:to-[#C72044] hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#991B3A] focus:ring-offset-2'
                   : 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'

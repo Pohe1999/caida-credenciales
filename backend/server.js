@@ -123,6 +123,11 @@ const RegistroCredencialSchema = new mongoose.Schema({
     uppercase: true,
     trim: true
   },
+  telefono: {
+    type: String,
+    required: false,
+    trim: true
+  },
   nombreCompleto: {
     type: String,
     required: false,
@@ -174,6 +179,7 @@ const PersonaPrioritariaSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  telefono: String,
   cargo: String,
   seccion: Number,
   sp: Number,
@@ -213,7 +219,7 @@ const uploadBase64ToCloudinary = async (imageBase64, folderName = process.env.CL
 // Endpoint para registrar persona nueva
 app.post('/api/persona-nueva', async (req, res) => {
   try {
-    const { nombreCompleto, curp, sp } = req.body;
+    const { nombreCompleto, curp, sp, telefono } = req.body;
 
     // Validaciones
     if (!nombreCompleto || !nombreCompleto.trim()) {
@@ -246,6 +252,13 @@ app.post('/api/persona-nueva', async (req, res) => {
       });
     }
 
+    if (!telefono || !telefono.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'El teléfono es requerido'
+      });
+    }
+
     console.log(`📝 Registrando nueva persona: ${nombreCompleto} con CURP: ${curp}`);
 
     // Verificar si ya existe una persona con ese CURP
@@ -266,6 +279,7 @@ app.post('/api/persona-nueva', async (req, res) => {
       nombreCompleto: nombreCompleto.trim().toUpperCase(),
       curp: curp.trim().toUpperCase(),
       sp: parseInt(sp),
+      telefono: telefono.trim(),
       cargo: '',
       seccion: 0
     });
@@ -281,6 +295,7 @@ app.post('/api/persona-nueva', async (req, res) => {
         nombreCompleto: personaGuardada.nombreCompleto,
         curp: personaGuardada.curp,
         sp: personaGuardada.sp,
+        telefono: personaGuardada.telefono,
         cargo: personaGuardada.cargo,
         seccion: personaGuardada.seccion
       }
@@ -334,12 +349,13 @@ app.post('/api/buscar-persona', async (req, res) => {
       sp: parseInt(sp)
     })
     .limit(10)
-    .select('nombreCompleto cargo seccion sp curp -_id')
+    .select('nombreCompleto telefono cargo seccion sp curp -_id')
     .lean();
 
     // Formatear resultados
     const resultadosFormateados = resultados.map(persona => ({
       nombreCompleto: persona.nombreCompleto,
+      telefono: persona.telefono || '',
       cargo: persona.cargo || '',
       seccion: persona.seccion || 0,
       sp: persona.sp || 0,
@@ -525,16 +541,16 @@ app.post('/api/validate-curp', async (req, res) => {
 // Registrar credencial (mejorado)
 app.post('/api/registro-credencial', async (req, res) => {
   try {
-    const { folio, curp, credencial, comprobacion, nombreCompleto, cargo, seccion, sp } = req.body;
+    const { folio, curp, credencial, comprobacion, nombreCompleto, cargo, seccion, sp, telefono } = req.body;
 
     console.log(`📝 Intentando registrar credencial para: ${nombreCompleto || curp || 'sin identificador'}`);
 
     // Validaciones básicas: el usuario ya fue validado por selección de nombre
-    if (!folio || !credencial || !nombreCompleto || !comprobacion) {
+    if (!folio || !credencial || !nombreCompleto || !comprobacion || !telefono) {
       console.log('❌ Datos incompletos en el registro');
       return res.status(400).json({
         success: false,
-        error: 'Campos requeridos: folio, nombreCompleto, credencial y comprobacion'
+        error: 'Campos requeridos: folio, nombreCompleto, telefono, credencial y comprobacion'
       });
     }
 
@@ -587,6 +603,7 @@ app.post('/api/registro-credencial', async (req, res) => {
       folio,
       curp: tieneCurpValido ? curp.toUpperCase() : '',
       nombreCompleto: nombreCompleto || '',
+      telefono: telefono || '',
       cargo: cargo || '',
       seccion: seccion || 0,
       sp: sp || 0,
@@ -603,6 +620,22 @@ app.post('/api/registro-credencial', async (req, res) => {
 
     // Guardar en la base de datos
     const registroGuardado = await nuevoRegistro.save();
+
+    // Actualizar teléfono en personas-prioritarias si aplica
+    if (telefono && nombreCompleto) {
+      try {
+        const nombreNormalizado = nombreCompleto.trim().toUpperCase();
+        await PersonaPrioritaria.updateOne(
+          { $or: [
+            { nombreCompleto: nombreNormalizado },
+            { curp: curp?.toUpperCase() }
+          ] },
+          { $set: { telefono: telefono.trim() } }
+        );
+      } catch (updateError) {
+        console.warn('⚠️ No se pudo actualizar teléfono en personas-prioritarias:', updateError.message);
+      }
+    }
     
     console.log(`✅ Registro guardado exitosamente con ID: ${registroGuardado._id}`);
     console.log(`📊 Total de registros en BD: ${await RegistroCredencial.countDocuments()}`);

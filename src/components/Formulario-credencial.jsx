@@ -39,8 +39,10 @@ export default function RegistroForm() {
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [curpNuevo, setCurpNuevo] = useState('');
   const [spNuevo, setSpNuevo] = useState('');
+  const [telefonoNuevo, setTelefonoNuevo] = useState('');
   const [registrandoNuevo, setRegistrandoNuevo] = useState(false);
   const [errorCurp, setErrorCurp] = useState('');
+  const [telefonoRegistro, setTelefonoRegistro] = useState('');
 
   const videoConstraints = {
     width: { ideal: 1920, max: 1920 },
@@ -80,6 +82,11 @@ export default function RegistroForm() {
       return;
     }
 
+    if (!telefonoNuevo.trim()) {
+      setErrorCurp('El teléfono es requerido');
+      return;
+    }
+
     setRegistrandoNuevo(true);
     setErrorCurp('');
 
@@ -93,7 +100,8 @@ export default function RegistroForm() {
         body: JSON.stringify({
           nombreCompleto: nombreNuevo.trim(),
           curp: curpNuevo.trim(),
-          sp: parseInt(spNuevo)
+          sp: parseInt(spNuevo),
+          telefono: telefonoNuevo.trim()
         })
       });
 
@@ -106,6 +114,7 @@ export default function RegistroForm() {
           nombreCompleto: result.persona.nombreCompleto,
           curp: result.persona.curp,
           sp: result.persona.sp,
+          telefono: result.persona.telefono || telefonoNuevo.trim(),
           cargo: '',
           seccion: 0
         });
@@ -113,8 +122,10 @@ export default function RegistroForm() {
         setNombreNuevo('');
         setCurpNuevo('');
         setSpNuevo('');
+        setTelefonoNuevo('');
         setMostrarFormNuevo(false);
         setBusquedaNombre(result.persona.nombreCompleto);
+        setTelefonoRegistro(result.persona.telefono || telefonoNuevo.trim());
         
         setTimeout(() => {
           setMensaje('');
@@ -208,6 +219,7 @@ export default function RegistroForm() {
     setMensajeBusqueda('');
     setMostrarResultados(false);
     setValue('curp', persona.curp || ''); // Si hay CURP en el Excel
+    setTelefonoRegistro(persona.telefono || '');
   };
 
   const capture = (ref, containerRef, setImg, setConfirm, setShow, filename) => {
@@ -284,6 +296,11 @@ export default function RegistroForm() {
       return;
     }
 
+    if (!telefonoRegistro.trim()) {
+      setMensaje('❌ Debes capturar el teléfono de la persona.');
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -317,6 +334,7 @@ export default function RegistroForm() {
                 credencial: credencialBase64,
                 comprobacion: comprobacionBase64,
                 nombreCompleto: personaSeleccionada.nombreCompleto,
+                telefono: telefonoRegistro.trim(),
                 cargo: personaSeleccionada.cargo,
                 seccion: personaSeleccionada.seccion,
                 sp: personaSeleccionada.sp
@@ -338,6 +356,7 @@ export default function RegistroForm() {
                 setMensaje('');
                 setBusquedaNombre('');
                 setPersonaSeleccionada(null);
+                setTelefonoRegistro('');
                 setResultadosBusqueda([]);
                 setMensajeBusqueda('');
               }, 3000);
@@ -492,6 +511,9 @@ export default function RegistroForm() {
                     >
                       <div className="font-semibold text-gray-800 text-sm md:text-base">{persona.nombreCompleto}</div>
                       <div className="text-xs md:text-sm text-gray-600 mt-1">
+                        <span className="font-medium">Teléfono:</span> {persona.telefono || 'N/A'}
+                      </div>
+                      <div className="text-xs md:text-sm text-gray-600 mt-1">
                         <span className="font-medium">Cargo:</span> {persona.cargo || 'N/A'}
                       </div>
                       <div className="text-xs md:text-sm text-gray-500 mt-1">
@@ -526,6 +548,10 @@ export default function RegistroForm() {
                   <span className="text-gray-800">{personaSeleccionada.nombreCompleto}</span>
                 </div>
                 <div>
+                  <span className="font-semibold text-gray-700">Teléfono:</span>{' '}
+                  <span className="text-gray-800">{telefonoRegistro || 'N/A'}</span>
+                </div>
+                <div>
                   <span className="font-semibold text-gray-700">Cargo:</span>{' '}
                   <span className="text-gray-800">{personaSeleccionada.cargo || 'N/A'}</span>
                 </div>
@@ -538,11 +564,24 @@ export default function RegistroForm() {
                   <span className="text-gray-800">{personaSeleccionada.sp || 'N/A'}</span>
                 </div>
               </div>
+              <div className="mt-3">
+                <label className="text-gray-700 font-semibold block mb-1 text-sm">
+                  Teléfono: <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={telefonoRegistro}
+                  onChange={(e) => setTelefonoRegistro(e.target.value)}
+                  placeholder="Ej. 5551234567"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none text-sm"
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   setPersonaSeleccionada(null);
                   setBusquedaNombre('');
+                  setTelefonoRegistro('');
                 }}
                 className="text-[#991B3A] text-sm underline hover:text-[#8B1538] mt-2"
               >
@@ -595,6 +634,7 @@ export default function RegistroForm() {
                   setNombreNuevo('');
                   setCurpNuevo('');
                   setSpNuevo('');
+                  setTelefonoNuevo('');
                   setErrorCurp('');
                 }}
                 className="text-gray-500 hover:text-gray-700"
@@ -676,6 +716,23 @@ export default function RegistroForm() {
                 )}
               </div>
 
+              {/* Campo Teléfono */}
+              <div>
+                <label className="text-gray-700 font-semibold block mb-1 text-sm">
+                  Teléfono: <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={telefonoNuevo}
+                  onChange={(e) => {
+                    setTelefonoNuevo(e.target.value);
+                    setErrorCurp('');
+                  }}
+                  placeholder="Ej. 5551234567"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none text-sm"
+                />
+              </div>
+
               {/* Mensaje de error */}
               {errorCurp && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
@@ -687,9 +744,9 @@ export default function RegistroForm() {
               <button
                 type="button"
                 onClick={registrarPersonaNueva}
-                disabled={registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo}
+                disabled={registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo || !telefonoNuevo.trim()}
                 className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-colors ${
-                  registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo
+                  registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo || !telefonoNuevo.trim()
                     ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                     : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
@@ -866,7 +923,7 @@ export default function RegistroForm() {
               disabled={!personaSeleccionada || !fotoConfirmada || !fotoComprobacionConfirmada}
               className={`w-full py-3 px-4 rounded-lg font-semibold text-base shadow-md transition-all duration-300 flex items-center justify-center ${
                 personaSeleccionada && fotoConfirmada && fotoComprobacionConfirmada
-                  ? 'bg-gradient-to-r from-[#8B1538] to-[#991B3A] text-white hover:from-[#991B3A] hover:to-[#C72044] hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#991B3A] focus:ring-offset-2'
+                  ? 'bg-linear-to-r from-[#8B1538] to-[#991B3A] text-white hover:from-[#991B3A] hover:to-[#C72044] hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#991B3A] focus:ring-offset-2'
                   : 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'
               }`}
             >

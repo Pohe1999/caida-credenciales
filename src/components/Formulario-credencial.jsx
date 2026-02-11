@@ -12,6 +12,8 @@ export default function RegistroForm() {
   const webcamRefComprobacion = useRef(null);
   const containerRefTarjeta = useRef(null);
   const containerRefComprobacion = useRef(null);
+  const fileInputCredencialRef = useRef(null);
+  const fileInputComprobacionRef = useRef(null);
 
   const [imgCredencial, setImgCredencial] = useState(null);
   const [showCam, setShowCam] = useState(false);
@@ -272,6 +274,26 @@ export default function RegistroForm() {
       'image/jpeg',
       0.9
     );
+  };
+
+  const handleFileUpload = (event, setImg, setConfirm, setShow) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // Convertir a File object
+        fetch(reader.result)
+          .then(res => res.blob())
+          .then(blob => {
+            const filename = file.name.includes('credencial') ? 'tarjeta.jpg' : 'comprobacion.jpg';
+            const imageFile = new File([blob], filename, { type: 'image/jpeg' });
+            setImg(imageFile);
+            setConfirm(true);
+            setShow(false);
+          });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const generateFolio = () => {
@@ -772,13 +794,30 @@ export default function RegistroForm() {
           </div>
           <p className="text-gray-600 text-xs mb-4 ml-10">Toma una foto clara de la tarjeta</p>
           {!showCam && (
-            <button 
-              type="button" 
-              onClick={() => setShowCam(true)} 
-              className="w-full bg-[#991B3A] text-white py-3 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-base font-semibold"
-            >
-              📷 Abrir Cámara para Tomar Foto de Tarjeta
-            </button>
+            <div className="space-y-3">
+              <button 
+                type="button" 
+                onClick={() => setShowCam(true)} 
+                className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-all duration-300 text-base font-semibold shadow-lg hover:shadow-xl"
+              >
+                📷 Abrir Cámara
+              </button>
+              <div 
+                onClick={() => fileInputCredencialRef.current?.click()}
+                className="w-full border-2 border-dashed border-blue-400 rounded-lg p-4 cursor-pointer hover:border-blue-600 hover:bg-blue-50 transition-all duration-300 text-center"
+              >
+                <div className="text-3xl mb-2">📂</div>
+                <p className="text-blue-600 font-semibold text-sm">Seleccionar foto de galería</p>
+                <p className="text-gray-500 text-xs">o arrastra una imagen aquí</p>
+              </div>
+              <input
+                ref={fileInputCredencialRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileUpload(e, setImgCredencial, setFotoConfirmada, setShowCam)}
+              />
+            </div>
           )}
           {showCam && (
             <div className="flex flex-col items-center">
@@ -841,13 +880,30 @@ export default function RegistroForm() {
             </div>
             <p className="text-gray-600 text-xs mb-4 ml-10">Toma una foto clara del comprobante de entrega</p>
             {!showCamComprobacion && (
-              <button 
-                type="button" 
-                onClick={() => setShowCamComprobacion(true)} 
-                className="w-full bg-[#991B3A] text-white py-3 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 text-base font-semibold"
-              >
-                📷 Abrir Cámara para Tomar Foto de Comprobación
-              </button>
+              <div className="space-y-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowCamComprobacion(true)} 
+                  className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-all duration-300 text-base font-semibold shadow-lg hover:shadow-xl"
+                >
+                  📷 Abrir Cámara
+                </button>
+                <div 
+                  onClick={() => fileInputComprobacionRef.current?.click()}
+                  className="w-full border-2 border-dashed border-blue-400 rounded-lg p-4 cursor-pointer hover:border-blue-600 hover:bg-blue-50 transition-all duration-300 text-center"
+                >
+                  <div className="text-3xl mb-2">📂</div>
+                  <p className="text-blue-600 font-semibold text-sm">Seleccionar foto de galería</p>
+                  <p className="text-gray-500 text-xs">o arrastra una imagen aquí</p>
+                </div>
+                <input
+                  ref={fileInputComprobacionRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, setImgComprobacion, setFotoComprobacionConfirmada, setShowCamComprobacion)}
+                />
+              </div>
             )}
             {showCamComprobacion && (
               <div className="flex flex-col items-center">

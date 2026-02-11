@@ -276,21 +276,66 @@ export default function RegistroForm() {
     );
   };
 
+  const compressImage = (canvas, quality = 0.8) => {
+    return new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', quality);
+    });
+  };
+
   const handleFileUpload = (event, setImg, setConfirm, setShow) => {
     const file = event.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
+      // Solo comprimir si el archivo es mayor a 50MB
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+      
+      if (file.size <= MAX_FILE_SIZE) {
+        // Archivo pequeño, no comprimir
+        setImg(file);
+        setConfirm(true);
+        setShow(false);
+        return;
+      }
+      
+      // Archivo grande, comprimir
       const reader = new FileReader();
-      reader.onload = () => {
-        // Convertir a File object
-        fetch(reader.result)
-          .then(res => res.blob())
-          .then(blob => {
-            const filename = file.name.includes('credencial') ? 'tarjeta.jpg' : 'comprobacion.jpg';
-            const imageFile = new File([blob], filename, { type: 'image/jpeg' });
-            setImg(imageFile);
-            setConfirm(true);
-            setShow(false);
-          });
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Escalar la imagen si es muy grande
+          const maxDimension = 2048;
+          if (width > maxDimension || height > maxDimension) {
+            const scale = Math.min(maxDimension / width, maxDimension / height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Comprimir iterativamente hasta que sea menor a 50MB
+          let quality = 0.85;
+          let blob = await compressImage(canvas, quality);
+          
+          while (blob.size > MAX_FILE_SIZE && quality > 0.1) {
+            quality -= 0.05;
+            blob = await compressImage(canvas, quality);
+          }
+          
+          const filename = file.name.includes('credencial') ? 'tarjeta.jpg' : 'comprobacion.jpg';
+          const compressedFile = new File([blob], filename, { type: 'image/jpeg' });
+          
+          setImg(compressedFile);
+          setConfirm(true);
+          setShow(false);
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
     }

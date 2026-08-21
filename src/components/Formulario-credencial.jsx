@@ -1,30 +1,165 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
 import Webcam from 'react-webcam';
-import { FaCheckCircle, FaSpinner, FaExclamationTriangle, FaUserCheck, FaSearch } from 'react-icons/fa';
+import {
+  FaCheckCircle, FaSpinner, FaUserCheck,
+  FaSearch, FaUpload, FaCamera, FaTimes, FaChevronDown
+} from 'react-icons/fa';
+
+// ---------------------------------------------------------------------------
+// Sub-components (defined outside to avoid unmount/remount on every render)
+// ---------------------------------------------------------------------------
+
+function CustomSelect({ value, onChange, options, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const selected = options.find(o => String(o.value) === String(value));
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`w-full px-4 py-3 pr-10 rounded-xl border-2 text-left flex items-center justify-between transition-all duration-200 bg-white font-medium text-sm
+          ${open
+            ? 'border-[#8B1538] ring-2 ring-[#8B1538]/20'
+            : 'border-gray-200 hover:border-gray-300'
+          }`}
+      >
+        <span className={selected ? 'text-gray-800' : 'text-gray-400'}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <FaChevronDown className={`absolute right-4 text-[#8B1538] text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-fadeIn">
+          {options.map(opt => {
+            const isSelected = String(value) === String(opt.value);
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors text-sm
+                  ${isSelected ? 'bg-[#FFF5F7]' : 'hover:bg-gray-50'}`}
+              >
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors
+                  ${isSelected ? 'bg-[#8B1538] text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  {opt.value}
+                </span>
+                <span className={isSelected ? 'text-[#8B1538] font-semibold' : 'text-gray-700'}>
+                  {opt.label}
+                </span>
+                {isSelected && <FaCheckCircle className="ml-auto text-[#8B1538] text-xs" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepBadge({ num, done, label }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div
+        className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 transition-all duration-300
+          ${done ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}
+      >
+        {done ? <FaCheckCircle className="text-xs" /> : num}
+      </div>
+      <span className={`font-semibold text-sm ${done ? 'text-emerald-600' : 'text-[#8B1538]'}`}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ImageDropZone({ isDragActive, onDragOver, onDragEnter, onDragLeave, onDrop, onClick, onKeyDown, error, inputRef, onFileChange }) {
+  return (
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        onDragOver={onDragOver}
+        onDragEnter={onDragEnter}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        onClick={onClick}
+        onKeyDown={onKeyDown}
+        className={`w-full border-2 border-dashed rounded-xl p-5 cursor-pointer transition-all duration-200 text-center select-none
+          ${isDragActive
+            ? 'border-[#8B1538] bg-[#FFF5F7] scale-[1.01] shadow-md'
+            : 'border-gray-200 hover:border-[#8B1538]/40 hover:bg-gray-50/80'
+          }`}
+      >
+        {/* pointer-events-none on children keeps drag events firing only on the parent */}
+        <div className="flex flex-col items-center gap-2.5 pointer-events-none">
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200
+            ${isDragActive ? 'bg-[#8B1538]/10 scale-110' : 'bg-gray-100'}`}>
+            <FaUpload className={`text-lg transition-colors ${isDragActive ? 'text-[#8B1538]' : 'text-gray-400'}`} />
+          </div>
+          <div>
+            <p className={`font-semibold text-sm transition-colors ${isDragActive ? 'text-[#8B1538]' : 'text-gray-600'}`}>
+              {isDragActive ? '¡Suelta la imagen aquí!' : 'Seleccionar de galería'}
+            </p>
+            {!isDragActive && <p className="text-gray-400 text-xs mt-0.5">o arrastra una imagen a esta zona</p>}
+          </div>
+        </div>
+      </div>
+      {error && <p className="text-red-500 text-xs mt-1.5 text-center">{error}</p>}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export default function RegistroForm() {
-  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm();
+  // --- Global form state ---
   const [mensaje, setMensaje] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // --- Refs ---
   const webcamRef = useRef(null);
   const webcamRefComprobacion = useRef(null);
   const containerRefTarjeta = useRef(null);
   const containerRefComprobacion = useRef(null);
   const fileInputCredencialRef = useRef(null);
   const fileInputComprobacionRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
+  // Counter-based drag tracking — more reliable than relatedTarget (which can be null)
+  const dragCounterCredencial = useRef(0);
+  const dragCounterComprobacion = useRef(0);
 
+  // --- Image states ---
   const [imgCredencial, setImgCredencial] = useState(null);
+  const [imgCredencialPreview, setImgCredencialPreview] = useState(null);
   const [showCam, setShowCam] = useState(false);
   const [fotoConfirmada, setFotoConfirmada] = useState(false);
 
-  // Estados para foto de comprobación de entrega
   const [imgComprobacion, setImgComprobacion] = useState(null);
+  const [imgComprobacionPreview, setImgComprobacionPreview] = useState(null);
   const [showCamComprobacion, setShowCamComprobacion] = useState(false);
   const [fotoComprobacionConfirmada, setFotoComprobacionConfirmada] = useState(false);
 
-  // Estados para búsqueda de personas
+  // --- Drag & drop state ---
+  const [dragActivoCredencial, setDragActivoCredencial] = useState(false);
+  const [dragActivoComprobacion, setDragActivoComprobacion] = useState(false);
+  const [errorArchivoCredencial, setErrorArchivoCredencial] = useState('');
+  const [errorArchivoComprobacion, setErrorArchivoComprobacion] = useState('');
+
+  // --- Search state ---
   const [spSeleccionado, setSpSeleccionado] = useState('');
   const [busquedaNombre, setBusquedaNombre] = useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
@@ -33,10 +168,7 @@ export default function RegistroForm() {
   const [mostrarResultados, setMostrarResultados] = useState(false);
   const [mensajeBusqueda, setMensajeBusqueda] = useState('');
 
-  // Timeout para búsqueda con delay
-  const [searchTimeout, setSearchTimeout] = useState(null);
-
-  // Estados para registro de persona nueva
+  // --- New person form state ---
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [curpNuevo, setCurpNuevo] = useState('');
@@ -46,59 +178,268 @@ export default function RegistroForm() {
   const [errorCurp, setErrorCurp] = useState('');
   const [telefonoRegistro, setTelefonoRegistro] = useState('');
 
+  // ---------------------------------------------------------------------------
+  // Effects
+  // ---------------------------------------------------------------------------
+
+  // Warn before closing/refreshing if the user has unsaved data
+  const hasData = !!(personaSeleccionada || imgCredencial || imgComprobacion);
+  useEffect(() => {
+    if (!hasData) return;
+    const handler = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasData]);
+
+  // Revoke object URLs on change to avoid memory leaks
+  useEffect(() => () => { if (imgCredencialPreview) URL.revokeObjectURL(imgCredencialPreview); }, [imgCredencialPreview]);
+  useEffect(() => () => { if (imgComprobacionPreview) URL.revokeObjectURL(imgComprobacionPreview); }, [imgComprobacionPreview]);
+
+  // Prevent default browser behavior when dropping outside designated zones
+  useEffect(() => {
+    const prevent = (e) => e.preventDefault();
+    window.addEventListener('dragover', prevent);
+    window.addEventListener('drop', prevent);
+    return () => { window.removeEventListener('dragover', prevent); window.removeEventListener('drop', prevent); };
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    if (busquedaNombre.trim().length >= 2) {
+      searchTimeoutRef.current = setTimeout(() => buscarPersona(busquedaNombre), 500);
+    } else {
+      setResultadosBusqueda([]);
+      setMensajeBusqueda('');
+      setMostrarResultados(false);
+    }
+
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaNombre, spSeleccionado]);
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  const obtenerMensajeError = (response, result, fallback) => {
+    if (result?.error) return result.error;
+    if (result?.mensaje) return result.mensaje;
+    if (response?.status === 400) return fallback || 'Solicitud inválida.';
+    if (response?.status === 404) return fallback || 'Recurso no encontrado.';
+    if (response?.status === 409) return fallback || 'Conflicto con un registro existente.';
+    if (response?.status === 429) return fallback || 'Demasiadas solicitudes. Intenta más tarde.';
+    if (response?.status >= 500) return fallback || 'Error interno del servidor.';
+    return fallback || 'Error inesperado.';
+  };
+
+  const validarCURP = (curp) => /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2}$/.test(curp.toUpperCase());
+
+  const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  // Updates the preview URL, revoking the previous one
+  const updatePreview = (file, setPreview) => {
+    setPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  };
+
   const videoConstraints = {
     width: { ideal: 1920, max: 1920 },
     height: { ideal: 1080, max: 1080 },
     facingMode: 'environment',
-    frameRate: { ideal: 30, max: 60 },
+    frameRate: { ideal: 30 },
     focusMode: 'continuous',
   };
 
-  // Recorte exacto al contenedor visible (emulando object-cover)
-
-  // Función para validar formato de CURP mexicano
-  const validarCURP = (curp) => {
-    const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2}$/;
-    return curpRegex.test(curp.toUpperCase());
+  const generateFolio = () => {
+    const d = new Date();
+    return `REG-${d.getFullYear()}${(d.getMonth() + 1).toString().padStart(2, '0')}${d.getDate().toString().padStart(2, '0')}-${Date.now().toString().slice(-5)}`;
   };
 
-  // Función para registrar persona nueva
+  // ---------------------------------------------------------------------------
+  // Image processing
+  // ---------------------------------------------------------------------------
+
+  const procesarArchivoImagen = (file, setImg, setPreview, setConfirm, setShow, filename, setError) => {
+    setError?.('');
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError?.('Ese archivo no es una imagen. Selecciona o arrastra un JPG, PNG o similar.');
+      return;
+    }
+
+    // Single-pass re-encode at 0.88 quality: ~10-15% lighter, imperceptible quality loss.
+    // Only scales down if the image exceeds 4096px (ultra-high-res cameras).
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const maxDimension = 4096;
+        if (width > maxDimension || height > maxDimension) {
+          const scale = Math.min(maxDimension / width, maxDimension / height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          const out = new File([blob], filename, { type: 'image/jpeg' });
+          setImg(out);
+          updatePreview(out, setPreview);
+          setConfirm(true);
+          setShow(false);
+        }, 'image/jpeg', 0.88);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const capture = (ref, containerRef, setImg, setPreview, setConfirm, setShow, filename) => {
+    const video = ref.current?.video;
+    const container = containerRef?.current;
+    if (!video || !container) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const cw = Math.max(1, container.clientWidth), ch = Math.max(1, container.clientHeight);
+    const scale = Math.max(cw / vw, ch / vh);
+    const sw = Math.round(cw / scale), sh = Math.round(ch / scale);
+    const sx = Math.max(0, Math.round((vw - sw) / 2)), sy = Math.max(0, Math.round((vh - sh) / 2));
+
+    canvas.width = cw;
+    canvas.height = ch;
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cw, ch);
+
+    canvas.toBlob(blob => {
+      const file = new File([blob], filename.replace('.png', '.jpg'), { type: 'image/jpeg' });
+      setImg(file);
+      updatePreview(file, setPreview);
+      setConfirm(true);
+      setShow(false);
+    }, 'image/jpeg', 0.9);
+  };
+
+  const handleFileUpload = (e, setImg, setPreview, setConfirm, setShow, filename, setError) => {
+    const file = e.target.files?.[0];
+    procesarArchivoImagen(file, setImg, setPreview, setConfirm, setShow, filename, setError);
+    e.target.value = '';
+  };
+
+  // ---------------------------------------------------------------------------
+  // Drag & drop handlers (counter-based — immune to null relatedTarget)
+  // ---------------------------------------------------------------------------
+
+  const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
+
+  const handleDragEnter = (e, setDragActivo, counterRef) => {
+    e.preventDefault();
+    e.stopPropagation();
+    counterRef.current++;
+    setDragActivo(true);
+  };
+
+  const handleDragLeave = (e, setDragActivo, counterRef) => {
+    e.preventDefault();
+    e.stopPropagation();
+    counterRef.current--;
+    if (counterRef.current <= 0) {
+      counterRef.current = 0;
+      setDragActivo(false);
+    }
+  };
+
+  const handleDrop = (e, setImg, setPreview, setConfirm, setShow, filename, setError, setDragActivo, counterRef) => {
+    e.preventDefault();
+    e.stopPropagation();
+    counterRef.current = 0;
+    setDragActivo(false);
+    procesarArchivoImagen(e.dataTransfer.files?.[0], setImg, setPreview, setConfirm, setShow, filename, setError);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Search & person selection
+  // ---------------------------------------------------------------------------
+
+  const buscarPersona = async (nombre) => {
+    if (!spSeleccionado) { setMensajeBusqueda('Selecciona un SP primero'); return; }
+    if (!nombre || nombre.trim().length < 2) {
+      setResultadosBusqueda([]); setMensajeBusqueda(''); setMostrarResultados(false); return;
+    }
+
+    setBuscando(true);
+    setMostrarResultados(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const response = await fetch(`${API_URL}/api/buscar-persona`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombre.trim(), sp: parseInt(spSeleccionado) })
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setResultadosBusqueda(result.resultados);
+        setMensajeBusqueda(result.mensaje);
+      } else {
+        setResultadosBusqueda([]);
+        setMensajeBusqueda(obtenerMensajeError(response, result, 'Error al buscar'));
+      }
+    } catch {
+      setResultadosBusqueda([]);
+      setMensajeBusqueda('Error de conexión con el servidor');
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  const seleccionarPersona = (persona) => {
+    setPersonaSeleccionada(persona);
+    setBusquedaNombre(persona.nombreCompleto);
+    setResultadosBusqueda([]);
+    setMensajeBusqueda('');
+    setMostrarResultados(false);
+    setTelefonoRegistro(persona.telefono || '');
+  };
+
+  const limpiarPersona = () => {
+    setPersonaSeleccionada(null);
+    setBusquedaNombre('');
+    setTelefonoRegistro('');
+  };
+
+  // ---------------------------------------------------------------------------
+  // New person registration
+  // ---------------------------------------------------------------------------
+
   const registrarPersonaNueva = async () => {
-    if (!nombreNuevo.trim()) {
-      setErrorCurp('El nombre completo es requerido');
-      return;
-    }
-
-    if (!curpNuevo.trim()) {
-      setErrorCurp('El CURP es requerido');
-      return;
-    }
-
-    if (!validarCURP(curpNuevo)) {
-      setErrorCurp('El formato del CURP no es válido. Debe tener 18 caracteres');
-      return;
-    }
-
-    if (!spNuevo) {
-      setErrorCurp('Debes seleccionar un SP');
-      return;
-    }
-
-    if (!telefonoNuevo.trim()) {
-      setErrorCurp('El teléfono es requerido');
-      return;
-    }
+    if (!nombreNuevo.trim()) { setErrorCurp('El nombre completo es requerido'); return; }
+    if (!curpNuevo.trim()) { setErrorCurp('El CURP es requerido'); return; }
+    if (!validarCURP(curpNuevo)) { setErrorCurp('El formato del CURP no es válido (18 caracteres)'); return; }
+    if (!spNuevo) { setErrorCurp('Debes seleccionar un SP'); return; }
+    if (!telefonoNuevo.trim()) { setErrorCurp('El teléfono es requerido'); return; }
 
     setRegistrandoNuevo(true);
     setErrorCurp('');
-
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
       const response = await fetch(`${API_URL}/api/persona-nueva`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombreCompleto: nombreNuevo.trim(),
           curp: curpNuevo.trim(),
@@ -106,12 +447,10 @@ export default function RegistroForm() {
           telefono: telefonoNuevo.trim()
         })
       });
-
       const result = await response.json();
 
-      if (result.success) {
+      if (response.ok && result.success) {
         setMensaje('✅ Usuario registrado exitosamente. Ahora puedes tomar las fotos de comprobación.');
-        
         setPersonaSeleccionada({
           nombreCompleto: result.persona.nombreCompleto,
           curp: result.persona.curp,
@@ -120,925 +459,582 @@ export default function RegistroForm() {
           cargo: '',
           seccion: 0
         });
-
-        setNombreNuevo('');
-        setCurpNuevo('');
-        setSpNuevo('');
-        setTelefonoNuevo('');
-        setMostrarFormNuevo(false);
         setBusquedaNombre(result.persona.nombreCompleto);
         setTelefonoRegistro(result.persona.telefono || telefonoNuevo.trim());
-        
-        setTimeout(() => {
-          setMensaje('');
-        }, 3000);
+        setNombreNuevo(''); setCurpNuevo(''); setSpNuevo(''); setTelefonoNuevo('');
+        setMostrarFormNuevo(false);
+        setTimeout(() => setMensaje(''), 3000);
       } else {
-        setErrorCurp(result.error || 'Error al registrar persona');
+        setErrorCurp(obtenerMensajeError(response, result, 'Error al registrar persona'));
       }
-    } catch (error) {
-      console.error('Error registrando persona nueva:', error);
+    } catch {
       setErrorCurp('Error de conexión con el servidor');
     } finally {
       setRegistrandoNuevo(false);
     }
   };
 
-  // Función para buscar personas en el Excel
-  const buscarPersona = async (nombre) => {
-    if (!spSeleccionado) {
-      setMensajeBusqueda('Selecciona un SP primero');
-      return;
-    }
-
-    if (!nombre || nombre.trim().length < 2) {
-      setResultadosBusqueda([]);
-      setMensajeBusqueda('');
-      setMostrarResultados(false);
-      return;
-    }
-
-    setBuscando(true);
-    setMostrarResultados(true);
-    
-    try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
-      const response = await fetch(`${API_URL}/api/buscar-persona`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ nombre: nombre.trim(), sp: parseInt(spSeleccionado) })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setResultadosBusqueda(result.resultados);
-        setMensajeBusqueda(result.mensaje);
-      } else {
-        setResultadosBusqueda([]);
-        setMensajeBusqueda('Error al buscar');
-      }
-    } catch (error) {
-      console.error('Error buscando persona:', error);
-      setResultadosBusqueda([]);
-      setMensajeBusqueda('Error de conexión con el servidor');
-    } finally {
-      setBuscando(false);
-    }
+  const cerrarFormNuevo = () => {
+    setMostrarFormNuevo(false);
+    setNombreNuevo(''); setCurpNuevo(''); setSpNuevo(''); setTelefonoNuevo(''); setErrorCurp('');
   };
 
-  // Effect para búsqueda dinámica con delay
-  useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
 
-    if (busquedaNombre.trim().length >= 2) {
-      const timeout = setTimeout(() => {
-        buscarPersona(busquedaNombre);
-      }, 500); // Delay de 500ms después de dejar de escribir
-      
-      setSearchTimeout(timeout);
-    } else {
-      setResultadosBusqueda([]);
-      setMensajeBusqueda('');
-      setMostrarResultados(false);
-    }
-
-    return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-    };
-  }, [busquedaNombre]);
-
-  // Función para seleccionar una persona de los resultados
-  const seleccionarPersona = (persona) => {
-    setPersonaSeleccionada(persona);
-    setBusquedaNombre(persona.nombreCompleto);
+  const resetForm = () => {
+    setImgCredencial(null);
+    updatePreview(null, setImgCredencialPreview);
+    setFotoConfirmada(false);
+    setShowCam(false);
+    setImgComprobacion(null);
+    updatePreview(null, setImgComprobacionPreview);
+    setFotoComprobacionConfirmada(false);
+    setShowCamComprobacion(false);
+    setBusquedaNombre('');
+    setPersonaSeleccionada(null);
+    setTelefonoRegistro('');
     setResultadosBusqueda([]);
     setMensajeBusqueda('');
-    setMostrarResultados(false);
-    setValue('curp', persona.curp || ''); // Si hay CURP en el Excel
-    setTelefonoRegistro(persona.telefono || '');
+    setMensaje('');
   };
 
-  const capture = (ref, containerRef, setImg, setConfirm, setShow, filename) => {
-    const video = ref.current?.video;
-    const container = containerRef?.current;
-    if (!video || !container) return;
+  const onSubmit = async (e) => {
+    e.preventDefault();
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    ctx.imageSmoothingEnabled = false;
-
-    const videoWidth = video.videoWidth;
-    const videoHeight = video.videoHeight;
-    const containerWidth = Math.max(1, container.clientWidth);
-    const containerHeight = Math.max(1, container.clientHeight);
-
-    // Escala de object-cover: el video se escala para llenar el contenedor
-    const scale = Math.max(containerWidth / videoWidth, containerHeight / videoHeight);
-
-    // Tamaño del área visible (en coordenadas del video)
-    const sourceWidth = Math.round(containerWidth / scale);
-    const sourceHeight = Math.round(containerHeight / scale);
-    const sourceX = Math.max(0, Math.round((videoWidth - sourceWidth) / 2));
-    const sourceY = Math.max(0, Math.round((videoHeight - sourceHeight) / 2));
-
-    // El canvas debe coincidir con el tamaño del contenedor visible
-    canvas.width = containerWidth;
-    canvas.height = containerHeight;
-
-    ctx.drawImage(
-      video,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0,
-      0,
-      containerWidth,
-      containerHeight
-    );
-
-    canvas.toBlob(
-      blob => {
-        const file = new File([blob], filename.replace('.png', '.jpg'), { type: 'image/jpeg' });
-        setImg(file);
-        setConfirm(true);
-        setShow(false);
-      },
-      'image/jpeg',
-      0.9
-    );
-  };
-
-  const compressImage = (canvas, quality = 0.8) => {
-    return new Promise((resolve) => {
-      canvas.toBlob(resolve, 'image/jpeg', quality);
-    });
-  };
-
-  const handleFileUpload = (event, setImg, setConfirm, setShow) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      // Solo comprimir si el archivo es mayor a 50MB
-      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-      
-      if (file.size <= MAX_FILE_SIZE) {
-        // Archivo pequeño, no comprimir
-        setImg(file);
-        setConfirm(true);
-        setShow(false);
-        return;
-      }
-      
-      // Archivo grande, comprimir
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = async () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          // Escalar la imagen si es muy grande
-          const maxDimension = 2048;
-          if (width > maxDimension || height > maxDimension) {
-            const scale = Math.min(maxDimension / width, maxDimension / height);
-            width = Math.round(width * scale);
-            height = Math.round(height * scale);
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Comprimir iterativamente hasta que sea menor a 50MB
-          let quality = 0.85;
-          let blob = await compressImage(canvas, quality);
-          
-          while (blob.size > MAX_FILE_SIZE && quality > 0.1) {
-            quality -= 0.05;
-            blob = await compressImage(canvas, quality);
-          }
-          
-          const filename = file.name.includes('credencial') ? 'tarjeta.jpg' : 'comprobacion.jpg';
-          const compressedFile = new File([blob], filename, { type: 'image/jpeg' });
-          
-          setImg(compressedFile);
-          setConfirm(true);
-          setShow(false);
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const generateFolio = () => {
-    const date = new Date();
-    return `REG-${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}-${Date.now().toString().slice(-5)}`;
-  };
-
-  const onSubmit = async (data) => {
-    // Verificar que se haya seleccionado una persona
-    if (!personaSeleccionada) {
-      setMensaje('❌ Debes seleccionar un usuario de la lista antes de continuar.');
-      return;
-    }
-
-    if (!imgCredencial) {
-      setMensaje('❌ Debes capturar la foto de la tarjeta.');
-      return;
-    }
-
-    if (!imgComprobacion) {
-      setMensaje('❌ Debes capturar la foto de comprobación de entrega.');
-      return;
-    }
-
-    if (!telefonoRegistro.trim()) {
-      setMensaje('❌ Debes capturar el teléfono de la persona.');
-      return;
-    }
+    if (!personaSeleccionada) { setMensaje('❌ Debes seleccionar un usuario de la lista antes de continuar.'); return; }
+    if (!imgCredencial) { setMensaje('❌ Debes capturar la foto de la tarjeta.'); return; }
+    if (!imgComprobacion) { setMensaje('❌ Debes capturar la foto de comprobación de entrega.'); return; }
+    if (!telefonoRegistro.trim()) { setMensaje('❌ Debes capturar el teléfono de la persona.'); return; }
 
     setLoading(true);
-    
     try {
       const folio = generateFolio();
-      
-      // Convertir imágenes a base64 para enviar al backend
-      const readerCredencial = new FileReader();
-      const readerComprobacion = new FileReader();
-      
-      let credencialBase64 = '';
-      let comprobacionBase64 = '';
-      
-      // Leer primera imagen
-      readerCredencial.onload = () => {
-        credencialBase64 = readerCredencial.result;
-        
-        // Leer segunda imagen
-        readerComprobacion.onload = async () => {
-          comprobacionBase64 = readerComprobacion.result;
-          
-          try {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
-            const response = await fetch(`${API_URL}/api/registro-credencial`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                folio,
-                curp: personaSeleccionada.curp || busquedaNombre,
-                credencial: credencialBase64,
-                comprobacion: comprobacionBase64,
-                nombreCompleto: personaSeleccionada.nombreCompleto,
-                telefono: telefonoRegistro.trim(),
-                cargo: personaSeleccionada.cargo,
-                seccion: personaSeleccionada.seccion,
-                sp: personaSeleccionada.sp
-              })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-              setMensaje(`✅ Registro exitoso. Folio: ${result.folio}`);
-              setTimeout(() => {
-                reset();
-                setImgCredencial(null);
-                setFotoConfirmada(false);
-                setShowCam(false);
-                setImgComprobacion(null);
-                setFotoComprobacionConfirmada(false);
-                setShowCamComprobacion(false);
-                setMensaje('');
-                setBusquedaNombre('');
-                setPersonaSeleccionada(null);
-                setTelefonoRegistro('');
-                setResultadosBusqueda([]);
-                setMensajeBusqueda('');
-              }, 3000);
-            } else {
-              setMensaje(`❌ ${result.error}`);
-              
-              if (result.error && result.error.includes('Ya existe un registro de credencial para')) {
-                setTimeout(() => {
-                  window.location.reload();
-                }, 1500);
-              }
-            }
-          } catch (error) {
-            console.error('Error enviando al backend:', error);
-            setMensaje('❌ Error al conectar con el servidor');
-          } finally {
-            setLoading(false);
-          }
-        };
-        
-        readerComprobacion.readAsDataURL(imgComprobacion);
-      };
-      
-      readerCredencial.readAsDataURL(imgCredencial);
-      
-    } catch (error) {
-      setMensaje('❌ Error al procesar el registro');
+      const [credencialBase64, comprobacionBase64] = await Promise.all([
+        readFileAsDataURL(imgCredencial),
+        readFileAsDataURL(imgComprobacion)
+      ]);
+
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const response = await fetch(`${API_URL}/api/registro-credencial`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folio,
+          curp: personaSeleccionada.curp || busquedaNombre,
+          credencial: credencialBase64,
+          comprobacion: comprobacionBase64,
+          nombreCompleto: personaSeleccionada.nombreCompleto,
+          telefono: telefonoRegistro.trim(),
+          cargo: personaSeleccionada.cargo,
+          seccion: personaSeleccionada.seccion,
+          sp: personaSeleccionada.sp
+        })
+      });
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setMensaje(`✅ Registro exitoso. Folio: ${result.folio}`);
+        setTimeout(resetForm, 3000);
+      } else {
+        setMensaje(`❌ ${obtenerMensajeError(response, result, 'Error al registrar credencial')}`);
+      }
+    } catch {
+      setMensaje('❌ Error al conectar con el servidor');
+    } finally {
       setLoading(false);
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  const allReady = personaSeleccionada && fotoConfirmada && fotoComprobacionConfirmada;
+
   return (
-    <div className="min-h-screen bg-gray-50 flex justify-center items-center p-4" style={{fontFamily: 'Verdana, sans-serif'}}>
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg border border-gray-200">
-        <h2 className="text-lg md:text-2xl font-bold text-[#8B1538] mb-6 text-center">Registro de tarjetas</h2>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex justify-center items-start py-8 px-4">
+      <form onSubmit={onSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-lg border border-gray-100 overflow-hidden">
 
-        {/* Selector de SP */}
-        <div className="mb-6 pb-6 border-b-2 border-gray-100">
-          <div className="flex items-center gap-2 mb-3">
-            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${spSeleccionado ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>1</span>
-            <label className="text-[#8B1538] font-semibold text-sm uppercase tracking-wide">
-              Selecciona el SP
-            </label>
-          </div>
-          <div className="relative">
-            <select
-              value={spSeleccionado}
-              onChange={(e) => {
-                setSpSeleccionado(e.target.value);
-                setBusquedaNombre('');
-                setPersonaSeleccionada(null);
-                setResultadosBusqueda([]);
-                setMensajeBusqueda('');
-              }}
-              className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-300 focus:ring-2 focus:ring-[#991B3A] focus:border-[#991B3A] focus:outline-none bg-white text-gray-700 font-medium transition-all duration-300 hover:border-[#C72044] cursor-pointer appearance-none shadow-sm"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238B1538'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 0.75rem center',
-                backgroundSize: '1.5rem'
-              }}
-            >
-              <option value="" className="text-gray-400"> Selecciona un SP </option>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                <option key={num} value={num} className="py-2">
-                  {num}
-                </option>
-              ))}
-            </select>
-            {spSeleccionado && (
-              <div className="absolute right-12 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                  </svg>
-                </span>
-              </div>
-            )}
-          </div>
-          {spSeleccionado && (
-            <p className="text-xs text-green-600 mt-2 flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-              </svg>
-              SP {spSeleccionado} seleccionado
-            </p>
-          )}
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#8B1538] to-[#C72044] px-6 py-5">
+          <h2 className="text-xl font-bold text-white tracking-tight">Registro de Tarjetas</h2>
+          <p className="text-[#F5D0DA] text-xs mt-0.5 font-medium">Completa los pasos para registrar la credencial</p>
         </div>
 
-        {/* Buscador de Personas */}
-        <div className={`mb-6 pb-6 border-b-2 border-gray-100 transition-all duration-300 ${!spSeleccionado ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${personaSeleccionada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>2</span>
-            <label className="text-[#8B1538] font-semibold text-xs md:text-sm">Buscar Persona</label>
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              value={busquedaNombre}
-              onChange={(e) => {
-                setBusquedaNombre(e.target.value);
-                if (!e.target.value.trim()) {
-                  setPersonaSeleccionada(null);
-                }
-              }}
-              onFocus={() => {
-                if (resultadosBusqueda.length > 0 && !personaSeleccionada) {
-                  setMostrarResultados(true);
-                }
-              }}
-              placeholder={spSeleccionado ? "Escribe el nombre o apellido..." : "Primero selecciona un SP"}
-              disabled={!spSeleccionado}
-              className={`w-full px-3.5 py-3 rounded-lg border transition-all duration-300 text-sm md:text-base ${
-                !spSeleccionado 
-                  ? 'bg-gray-100 cursor-not-allowed border-gray-300'
-                  : personaSeleccionada
-                    ? 'border-green-500 focus:ring-green-500 focus:border-green-500 bg-green-50'
-                    : 'border-gray-300 focus:ring-[#991B3A] focus:border-[#991B3A]'
-              } focus:outline-none focus:ring-2 bg-white text-gray-700 placeholder-gray-400`}
-            />
-            
-            {/* Indicador de estado en el input */}
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              {buscando ? (
-                <FaSpinner className="animate-spin text-[#991B3A]" />
-              ) : personaSeleccionada ? (
-                <FaUserCheck className="text-green-500" />
-              ) : (
-                <FaSearch className="text-gray-400" />
-              )}
-            </div>
-          </div>
+        <div className="p-6 space-y-6">
 
-          {/* Resultados de búsqueda */}
-          {mostrarResultados && !personaSeleccionada && busquedaNombre.trim().length >= 2 && (
-            <div className="absolute z-10 left-1/2 transform -translate-x-1/2 w-11/12 max-w-lg mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
-              {buscando ? (
-                <div className="p-4 text-center text-gray-600">
-                  <FaSpinner className="animate-spin inline mr-2" />
-                  Buscando...
-                </div>
-              ) : resultadosBusqueda.length > 0 ? (
-                <>
-                  <div className="p-2 bg-gray-100 border-b border-gray-200 text-xs md:text-sm text-gray-600">
-                    {mensajeBusqueda}
-                  </div>
-                  {resultadosBusqueda.map((persona, index) => (
-                    <div
-                      key={index}
-                      onClick={() => seleccionarPersona(persona)}
-                      className="p-3 hover:bg-[#FFF5F7] cursor-pointer border-b border-gray-100 transition-colors"
-                    >
-                      <div className="font-semibold text-gray-800 text-sm md:text-base">{persona.nombreCompleto}</div>
-                      <div className="text-xs md:text-sm text-gray-600 mt-1">
-                        <span className="font-medium">Teléfono:</span> {persona.telefono || 'N/A'}
-                      </div>
-                      <div className="text-xs md:text-sm text-gray-600 mt-1">
-                        <span className="font-medium">Cargo:</span> {persona.cargo || 'N/A'}
-                      </div>
-                      <div className="text-xs md:text-sm text-gray-500 mt-1">
-                        <span className="mr-3">
-                          <span className="font-medium">Sección:</span> {persona.seccion || 'N/A'}
-                        </span>
-                        <span>
-                          <span className="font-medium">SP:</span> {persona.sp || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <div className="p-4 text-center text-red-600">
-                  ❌ {mensajeBusqueda || 'Usuario no encontrado'}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Información de persona seleccionada */}
-          {personaSeleccionada && (
-            <div className="mt-3 p-4 bg-green-100 border border-green-300 rounded-lg">
-              <div className="flex items-center mb-2">
-                <FaUserCheck className="text-green-600 mr-2 text-xl" />
-                <span className="text-green-800 font-bold">✅ Usuario encontrado</span>
-              </div>
-              <div className="space-y-1 text-sm">
-                <div>
-                  <span className="font-semibold text-gray-700">Nombre:</span>{' '}
-                  <span className="text-gray-800">{personaSeleccionada.nombreCompleto}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Teléfono:</span>{' '}
-                  <span className="text-gray-800">{telefonoRegistro || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Cargo:</span>{' '}
-                  <span className="text-gray-800">{personaSeleccionada.cargo || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Sección:</span>{' '}
-                  <span className="text-gray-800">{personaSeleccionada.seccion || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">SP:</span>{' '}
-                  <span className="text-gray-800">{personaSeleccionada.sp || 'N/A'}</span>
-                </div>
-              </div>
-              <div className="mt-3">
-                <label className="text-gray-700 font-semibold block mb-1 text-sm">
-                  Teléfono: <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={telefonoRegistro}
-                  onChange={(e) => setTelefonoRegistro(e.target.value)}
-                  placeholder="Ej. 5551234567"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none text-sm"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setPersonaSeleccionada(null);
+          {/* ── STEP 1: SP ── */}
+          <div>
+            <StepBadge num="1" done={!!spSeleccionado} label="Selecciona el SP" />
+            <div className="mt-3">
+              <CustomSelect
+                value={spSeleccionado}
+                placeholder="Selecciona un SP"
+                options={[1,2,3,4,5,6,7,8].map(n => ({ value: n, label: `SP ${n}` }))}
+                onChange={(val) => {
+                  setSpSeleccionado(val);
                   setBusquedaNombre('');
-                  setTelefonoRegistro('');
+                  setPersonaSeleccionada(null);
+                  setResultadosBusqueda([]);
+                  setMensajeBusqueda('');
                 }}
-                className="text-[#991B3A] text-sm underline hover:text-[#8B1538] mt-2"
-              >
-                Buscar otra persona
-              </button>
-            </div>
-          )}
-
-          {/* Instrucciones */}
-          {!personaSeleccionada && !spSeleccionado && (
-            <p className="text-xs text-gray-600 mt-2">
-              💡 Primero selecciona un SP
-            </p>
-          )}
-          {!personaSeleccionada && spSeleccionado && busquedaNombre.trim().length < 2 && (
-            <p className="text-xs text-gray-600 mt-2">
-              💡 Escribe al menos 2 caracteres para buscar
-            </p>
-          )}
-        </div>
-
-        {/* Botón discreto para registrar persona nueva - SIEMPRE HABILITADO */}
-        {!personaSeleccionada && (
-          <div className="mb-6 flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                setMostrarFormNuevo(true);
-                setMostrarResultados(false);
-                setBusquedaNombre('');
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-medium shadow-sm bg-[#FFF5F7] text-[#8B1538] border-[#F5D0DA] hover:bg-[#FCE7EF] hover:border-[#F0B3C3] hover:shadow transition-colors"
-              title="¿No aparece en la lista? Registrar persona"
-            >
-              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#8B1538] text-white text-[10px] font-bold">?</span>
-              ¿No aparece en la lista? Registrar persona
-            </button>
-          </div>
-        )}
-
-        {/* Formulario para registrar persona nueva - SIEMPRE HABILITADO */}
-        {mostrarFormNuevo && !personaSeleccionada && (
-          <div className="mb-6 p-4 bg-blue-50 border-2 border-[#8B1538] rounded-lg">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[#8B1538] font-bold text-lg">📝 Registrar Nueva Persona</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setMostrarFormNuevo(false);
-                  setNombreNuevo('');
-                  setCurpNuevo('');
-                  setSpNuevo('');
-                  setTelefonoNuevo('');
-                  setErrorCurp('');
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {/* Selector de SP para persona nueva */}
-              <div>
-                <label className="text-gray-700 font-semibold block mb-1 text-sm">
-                  SP: <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={spNuevo}
-                  onChange={(e) => {
-                    setSpNuevo(e.target.value);
-                    setErrorCurp('');
-                  }}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none text-sm"
-                >
-                  <option value="">Selecciona un SP</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                    <option key={num} value={num}>{num}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Campo Nombre Completo */}
-              <div>
-                <label className="text-gray-700 font-semibold block mb-1 text-sm">
-                  Nombre Completo: <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={nombreNuevo}
-                  onChange={(e) => {
-                    setNombreNuevo(e.target.value.toUpperCase());
-                    setErrorCurp('');
-                  }}
-                  placeholder="NOMBRE COMPLETO EN MAYÚSCULAS"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none uppercase text-sm"
-                />
-              </div>
-
-              {/* Campo CURP */}
-              <div>
-                <label className="text-gray-700 font-semibold block mb-1 text-sm">
-                  CURP: <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={curpNuevo}
-                  onChange={(e) => {
-                    const valor = e.target.value.toUpperCase().slice(0, 18);
-                    setCurpNuevo(valor);
-                    setErrorCurp('');
-                    
-                    if (valor.length === 18 && !validarCURP(valor)) {
-                      setErrorCurp('Formato de CURP inválido');
-                    }
-                  }}
-                  placeholder="18 CARACTERES"
-                  maxLength="18"
-                  className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:outline-none uppercase text-sm ${
-                    errorCurp && curpNuevo.length > 0
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-[#8B1538] focus:border-[#8B1538]'
-                  }`}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Formato: 4 letras, 6 números, H o M, 5 letras, 2 alfanuméricos
-                </p>
-                {curpNuevo.length > 0 && (
-                  <p className={`text-xs mt-1 ${validarCURP(curpNuevo) ? 'text-green-600' : 'text-orange-600'}`}>
-                    {curpNuevo.length}/18 caracteres {validarCURP(curpNuevo) ? '✓ Válido' : ''}
-                  </p>
-                )}
-              </div>
-
-              {/* Campo Teléfono */}
-              <div>
-                <label className="text-gray-700 font-semibold block mb-1 text-sm">
-                  Teléfono: <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={telefonoNuevo}
-                  onChange={(e) => {
-                    setTelefonoNuevo(e.target.value);
-                    setErrorCurp('');
-                  }}
-                  placeholder="Ej. 5551234567"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#8B1538] focus:border-[#8B1538] focus:outline-none text-sm"
-                />
-              </div>
-
-              {/* Mensaje de error */}
-              {errorCurp && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
-                  ⚠️ {errorCurp}
-                </div>
-              )}
-
-              {/* Botón de registro */}
-              <button
-                type="button"
-                onClick={registrarPersonaNueva}
-                disabled={registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo || !telefonoNuevo.trim()}
-                className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-colors ${
-                  registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo || !telefonoNuevo.trim()
-                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-              >
-                {registrandoNuevo ? (
-                  <>
-                    <FaSpinner className="animate-spin inline mr-2" />
-                    Registrando...
-                  </>
-                ) : (
-                  '✓ Registrar y Continuar'
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Foto de Tarjeta */}
-        <div className={`mb-6 pb-6 border-b-2 border-gray-100 transition-all duration-300 ${!personaSeleccionada ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${fotoConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>3</span>
-            <label className="text-[#8B1538] font-semibold text-sm">Foto de Tarjeta</label>
-          </div>
-          <p className="text-gray-600 text-xs mb-4 ml-10">Toma una foto clara de la tarjeta</p>
-          {!showCam && (
-            <div className="space-y-3">
-              <button 
-                type="button" 
-                onClick={() => setShowCam(true)} 
-                className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-all duration-300 text-base font-semibold shadow-lg hover:shadow-xl"
-              >
-                📷 Abrir Cámara
-              </button>
-              <div 
-                onClick={() => fileInputCredencialRef.current?.click()}
-                className="w-full border-2 border-dashed border-blue-400 rounded-lg p-4 cursor-pointer hover:border-blue-600 hover:bg-blue-50 transition-all duration-300 text-center"
-              >
-                <div className="text-3xl mb-2">📂</div>
-                <p className="text-blue-600 font-semibold text-sm">Seleccionar foto de galería</p>
-                <p className="text-gray-500 text-xs">o arrastra una imagen aquí</p>
-              </div>
-              <input
-                ref={fileInputCredencialRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleFileUpload(e, setImgCredencial, setFotoConfirmada, setShowCam)}
               />
             </div>
-          )}
-          {showCam && (
-            <div className="flex flex-col items-center">
-              <div ref={containerRefTarjeta} className="relative w-full max-w-sm aspect-2/3 border-4 border-[#991B3A] rounded-lg overflow-hidden mb-4 shadow-lg">
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  videoConstraints={videoConstraints}
-                  className="w-full h-full object-cover"
-                />
-                {/* Guía visual para alineación */}
-                <div className="absolute inset-0 border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
-                <div className="absolute top-2 left-2 right-2 text-center">
-                  <span className="bg-[#8B1538]/80 text-white text-xs px-2 py-1 rounded">
-                    Coloca la tarjeta aquí
-                  </span>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => capture(webcamRef, containerRefTarjeta, setImgCredencial, setFotoConfirmada, setShowCam, 'tarjeta.jpg')}
-                  className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold text-sm"
-                >
-                  📸 Capturar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCam(false)}
-                  className="bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors duration-300 text-sm"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-          {fotoConfirmada && (
-            <div className="text-center mt-4">
-              <p className="text-[#991B3A] font-medium">✅ Foto de tarjeta capturada correctamente</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setFotoConfirmada(false);
-                  setImgCredencial(null);
-                }}
-                className="text-[#991B3A] text-sm underline hover:text-[#8B1538] mt-2"
-              >
-                Tomar otra foto
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Foto de Comprobación de Entrega - Solo aparece después de la primera foto */}
-        {fotoConfirmada && (
-          <div className="mb-6 pb-6 border-b-2 border-gray-100 animate-fadeIn">
-            <div className="flex items-center gap-2 mb-3">
-              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${fotoComprobacionConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>4</span>
-              <label className="text-[#8B1538] font-semibold text-sm">Foto de Comprobación</label>
-            </div>
-            <p className="text-gray-600 text-xs mb-4 ml-10">Toma una foto clara del comprobante de entrega</p>
-            {!showCamComprobacion && (
-              <div className="space-y-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowCamComprobacion(true)} 
-                  className="w-full bg-[#991B3A] text-white py-4 rounded-lg hover:bg-[#8B1538] transition-all duration-300 text-base font-semibold shadow-lg hover:shadow-xl"
-                >
-                  📷 Abrir Cámara
-                </button>
-                <div 
-                  onClick={() => fileInputComprobacionRef.current?.click()}
-                  className="w-full border-2 border-dashed border-blue-400 rounded-lg p-4 cursor-pointer hover:border-blue-600 hover:bg-blue-50 transition-all duration-300 text-center"
-                >
-                  <div className="text-3xl mb-2">📂</div>
-                  <p className="text-blue-600 font-semibold text-sm">Seleccionar foto de galería</p>
-                  <p className="text-gray-500 text-xs">o arrastra una imagen aquí</p>
-                </div>
-                <input
-                  ref={fileInputComprobacionRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFileUpload(e, setImgComprobacion, setFotoComprobacionConfirmada, setShowCamComprobacion)}
-                />
-              </div>
+            {spSeleccionado && (
+              <p className="text-xs text-emerald-600 mt-1.5 font-medium flex items-center gap-1">
+                <FaCheckCircle /> SP {spSeleccionado} seleccionado
+              </p>
             )}
-            {showCamComprobacion && (
-              <div className="flex flex-col items-center">
-                <div ref={containerRefComprobacion} className="relative w-full max-w-sm aspect-2/3 border-4 border-[#991B3A] rounded-lg overflow-hidden mb-4 shadow-lg">
-                  <Webcam
-                    audio={false}
-                    ref={webcamRefComprobacion}
-                    videoConstraints={videoConstraints}
-                    className="w-full h-full object-cover"
+          </div>
+
+          <div className="h-px bg-gray-100" />
+
+          {/* ── STEP 2: Buscar Persona ── */}
+          <div className={`transition-all duration-300 ${!spSeleccionado ? 'opacity-40 pointer-events-none' : ''}`}>
+            <StepBadge num="2" done={!!personaSeleccionada} label="Buscar Persona" />
+
+            {!personaSeleccionada ? (
+              <>
+                <div className="mt-3 relative">
+                  <input
+                    type="text"
+                    value={busquedaNombre}
+                    onChange={(e) => {
+                      setBusquedaNombre(e.target.value);
+                      if (!e.target.value.trim()) setPersonaSeleccionada(null);
+                    }}
+                    onFocus={() => {
+                      if (resultadosBusqueda.length > 0 && !personaSeleccionada) setMostrarResultados(true);
+                    }}
+                    placeholder={spSeleccionado ? 'Escribe el nombre o apellido...' : 'Primero selecciona un SP'}
+                    disabled={!spSeleccionado}
+                    className="w-full px-4 py-3 pr-10 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-[#8B1538]/30 focus:border-[#8B1538] focus:outline-none bg-white text-gray-700 transition-all duration-200 text-sm placeholder-gray-400"
                   />
-                  {/* Guía visual para alineación */}
-                  <div className="absolute inset-0 border-2 border-[#C72044] border-dashed rounded-md pointer-events-none opacity-60"></div>
-                  <div className="absolute top-2 left-2 right-2 text-center">
-                    <span className="bg-[#8B1538]/80 text-white text-xs px-2 py-1 rounded">
-                      Coloca el comprobante aquí
-                    </span>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {buscando
+                      ? <FaSpinner className="animate-spin text-[#8B1538]" />
+                      : <FaSearch className="text-gray-400" />
+                    }
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => capture(webcamRefComprobacion, containerRefComprobacion, setImgComprobacion, setFotoComprobacionConfirmada, setShowCamComprobacion, 'comprobacion.jpg')}
-                    className="bg-[#991B3A] text-white py-3 px-6 rounded-lg hover:bg-[#8B1538] transition-colors duration-300 font-semibold text-sm"
-                  >
-                    📸 Capturar
+
+                {/* Search dropdown */}
+                {mostrarResultados && busquedaNombre.trim().length >= 2 && (
+                  <div className="mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto animate-fadeIn">
+                    {buscando ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        <FaSpinner className="animate-spin inline mr-2 text-[#8B1538]" />
+                        Buscando...
+                      </div>
+                    ) : resultadosBusqueda.length > 0 ? (
+                      <>
+                        <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500 font-medium rounded-t-xl">
+                          {mensajeBusqueda}
+                        </div>
+                        {resultadosBusqueda.map((persona, i) => (
+                          <div
+                            key={i}
+                            onClick={() => seleccionarPersona(persona)}
+                            className="px-4 py-3 hover:bg-[#FFF5F7] cursor-pointer border-b border-gray-50 transition-colors last:border-0"
+                          >
+                            <div className="font-semibold text-gray-800 text-sm">{persona.nombreCompleto}</div>
+                            <div className="text-xs text-gray-500 mt-0.5 flex gap-3">
+                              <span>{persona.cargo || 'Sin cargo'}</span>
+                              <span>Sección {persona.seccion || 'N/A'}</span>
+                              <span>SP {persona.sp}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="p-4 text-center text-sm text-gray-500">
+                        No se encontraron resultados
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {spSeleccionado && busquedaNombre.trim().length < 2 && (
+                  <p className="text-xs text-gray-400 mt-1.5">Escribe al menos 2 caracteres para buscar</p>
+                )}
+
+                {/* Register new person */}
+                <div className="mt-3">
+                  {!mostrarFormNuevo ? (
+                    <button
+                      type="button"
+                      onClick={() => { setMostrarFormNuevo(true); setMostrarResultados(false); }}
+                      className="text-[#8B1538] text-xs font-medium hover:underline flex items-center gap-1.5"
+                    >
+                      <span className="w-4 h-4 rounded-full bg-[#8B1538] text-white text-[9px] flex items-center justify-center font-bold">?</span>
+                      ¿No aparece en la lista? Registrar persona nueva
+                    </button>
+                  ) : (
+                    <div className="border-2 border-[#8B1538]/20 bg-blue-50/40 rounded-xl p-4 animate-fadeIn">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-[#8B1538] font-bold text-sm">Registrar Nueva Persona</h3>
+                        <button type="button" onClick={cerrarFormNuevo} className="text-gray-400 hover:text-gray-600 p-0.5">
+                          <FaTimes />
+                        </button>
+                      </div>
+                      <div className="space-y-2.5">
+                        <div>
+                          <label className="text-gray-600 font-medium text-xs mb-1 block">SP <span className="text-red-500">*</span></label>
+                          <CustomSelect
+                            value={spNuevo}
+                            placeholder="Selecciona un SP"
+                            options={[1,2,3,4,5,6,7,8].map(n => ({ value: n, label: `SP ${n}` }))}
+                            onChange={(val) => { setSpNuevo(val); setErrorCurp(''); }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-gray-600 font-medium text-xs mb-1 block">Nombre Completo <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            value={nombreNuevo}
+                            onChange={(e) => { setNombreNuevo(e.target.value.toUpperCase()); setErrorCurp(''); }}
+                            placeholder="NOMBRE COMPLETO"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#8B1538]/30 focus:border-[#8B1538] focus:outline-none uppercase text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-gray-600 font-medium text-xs mb-1 block">CURP <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            value={curpNuevo}
+                            onChange={(e) => {
+                              const v = e.target.value.toUpperCase().slice(0, 18);
+                              setCurpNuevo(v);
+                              setErrorCurp('');
+                              if (v.length === 18 && !validarCURP(v)) setErrorCurp('Formato de CURP inválido');
+                            }}
+                            placeholder="18 CARACTERES"
+                            maxLength="18"
+                            className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:outline-none uppercase text-sm
+                              ${errorCurp && curpNuevo.length > 0
+                                ? 'border-red-400 focus:ring-red-300'
+                                : 'border-gray-200 focus:ring-[#8B1538]/30 focus:border-[#8B1538]'}`}
+                          />
+                          {curpNuevo.length > 0 && (
+                            <p className={`text-xs mt-0.5 ${validarCURP(curpNuevo) ? 'text-emerald-600' : 'text-orange-500'}`}>
+                              {curpNuevo.length}/18 {validarCURP(curpNuevo) ? '· Válido ✓' : ''}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="text-gray-600 font-medium text-xs mb-1 block">Teléfono <span className="text-red-500">*</span></label>
+                          <input
+                            type="tel"
+                            value={telefonoNuevo}
+                            onChange={(e) => { setTelefonoNuevo(e.target.value); setErrorCurp(''); }}
+                            placeholder="5551234567"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#8B1538]/30 focus:border-[#8B1538] focus:outline-none text-sm"
+                          />
+                        </div>
+                        {errorCurp && (
+                          <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-xs">
+                            {errorCurp}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={registrarPersonaNueva}
+                          disabled={registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo || !telefonoNuevo.trim()}
+                          className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2
+                            ${registrandoNuevo || !nombreNuevo.trim() || !curpNuevo.trim() || curpNuevo.length !== 18 || !spNuevo || !telefonoNuevo.trim()
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                            }`}
+                        >
+                          {registrandoNuevo
+                            ? <><FaSpinner className="animate-spin" /> Registrando...</>
+                            : '✓ Registrar y Continuar'
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* Selected person card */
+              <div className="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-4 animate-fadeIn">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                      <FaUserCheck className="text-emerald-600 text-base" />
+                    </div>
+                    <div>
+                      <p className="text-gray-800 font-bold text-sm">{personaSeleccionada.nombreCompleto}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        {personaSeleccionada.cargo || 'Sin cargo'} · Sección {personaSeleccionada.seccion || 'N/A'} · SP {personaSeleccionada.sp}
+                      </p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={limpiarPersona} className="text-gray-400 hover:text-gray-600 p-1" title="Cambiar persona">
+                    <FaTimes />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCamComprobacion(false)}
-                    className="bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors duration-300 text-sm"
-                  >
-                    Cancelar
-                  </button>
+                </div>
+                <div className="mt-3 pt-3 border-t border-emerald-200">
+                  <label className="text-gray-600 font-medium text-xs mb-1 block uppercase tracking-wide">
+                    Teléfono <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={telefonoRegistro}
+                    onChange={(e) => setTelefonoRegistro(e.target.value)}
+                    placeholder="Ej. 5551234567"
+                    className="w-full px-3 py-2 rounded-lg border-2 border-emerald-200 focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 focus:outline-none text-sm bg-white"
+                  />
                 </div>
               </div>
             )}
-            {fotoComprobacionConfirmada && (
-              <div className="text-center mt-4">
-                <p className="text-[#991B3A] font-medium">✅ Foto de comprobación capturada correctamente</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFotoComprobacionConfirmada(false);
-                    setImgComprobacion(null);
-                  }}
-                  className="text-[#991B3A] text-sm underline hover:text-[#8B1538] mt-2"
-                >
-                  Tomar otra foto
-                </button>
+          </div>
+
+          <div className="h-px bg-gray-100" />
+
+          {/* ── STEP 3: Foto de Tarjeta ── */}
+          <div className={`transition-all duration-300 ${!personaSeleccionada ? 'opacity-40 pointer-events-none' : ''}`}>
+            <StepBadge num="3" done={fotoConfirmada} label="Foto de Tarjeta" />
+            <p className="text-gray-400 text-xs mt-1 ml-[42px]">Toma una foto clara de la tarjeta</p>
+
+            <div className="mt-3">
+              {!showCam && !fotoConfirmada && (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCam(true)}
+                    className="w-full bg-[#8B1538] text-white py-3.5 rounded-xl hover:bg-[#A01A43] active:scale-[0.99] transition-all duration-200 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <FaCamera /> Abrir Cámara
+                  </button>
+                  <ImageDropZone
+                    isDragActive={dragActivoCredencial}
+                    onDragOver={handleDragOver}
+                    onDragEnter={(e) => handleDragEnter(e, setDragActivoCredencial, dragCounterCredencial)}
+                    onDragLeave={(e) => handleDragLeave(e, setDragActivoCredencial, dragCounterCredencial)}
+                    onDrop={(e) => handleDrop(e, setImgCredencial, setImgCredencialPreview, setFotoConfirmada, setShowCam, 'tarjeta.jpg', setErrorArchivoCredencial, setDragActivoCredencial, dragCounterCredencial)}
+                    onClick={() => fileInputCredencialRef.current?.click()}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInputCredencialRef.current?.click()}
+                    error={errorArchivoCredencial}
+                    inputRef={fileInputCredencialRef}
+                    onFileChange={(e) => handleFileUpload(e, setImgCredencial, setImgCredencialPreview, setFotoConfirmada, setShowCam, 'tarjeta.jpg', setErrorArchivoCredencial)}
+                  />
+                </div>
+              )}
+
+              {showCam && (
+                <div className="flex flex-col items-center animate-fadeIn">
+                  <div ref={containerRefTarjeta} className="relative w-full aspect-video border-4 border-[#8B1538] rounded-xl overflow-hidden shadow-md">
+                    <Webcam
+                      audio={false}
+                      ref={webcamRef}
+                      videoConstraints={videoConstraints}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-2 border-2 border-white/40 border-dashed rounded-lg pointer-events-none" />
+                    <div className="absolute top-2 left-0 right-0 text-center">
+                      <span className="bg-black/50 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
+                        Coloca la tarjeta dentro del marco
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-3 w-full">
+                    <button
+                      type="button"
+                      onClick={() => capture(webcamRef, containerRefTarjeta, setImgCredencial, setImgCredencialPreview, setFotoConfirmada, setShowCam, 'tarjeta.jpg')}
+                      className="flex-1 bg-[#8B1538] text-white py-3 rounded-xl hover:bg-[#A01A43] transition-colors font-semibold text-sm flex items-center justify-center gap-2"
+                    >
+                      <FaCamera /> Capturar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCam(false)}
+                      className="px-5 bg-gray-100 text-gray-600 py-3 rounded-xl hover:bg-gray-200 transition-colors text-sm font-medium"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {fotoConfirmada && imgCredencialPreview && (
+                <div className="rounded-xl overflow-hidden border-2 border-emerald-200 animate-fadeIn">
+                  <div className="relative">
+                    <img src={imgCredencialPreview} alt="Foto de tarjeta" className="w-full h-44 object-cover" />
+                    <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1.5 shadow-md">
+                      <FaCheckCircle className="text-sm" />
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 bg-emerald-50 flex items-center justify-between">
+                    <p className="text-emerald-700 font-medium text-xs">Foto capturada correctamente</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFotoConfirmada(false);
+                        setImgCredencial(null);
+                        updatePreview(null, setImgCredencialPreview);
+                        // Reset comprobacion too since it depends on this step
+                        setFotoComprobacionConfirmada(false);
+                        setImgComprobacion(null);
+                        updatePreview(null, setImgComprobacionPreview);
+                      }}
+                      className="text-[#8B1538] text-xs font-medium hover:underline"
+                    >
+                      Cambiar foto
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── STEP 4: Foto de Comprobación (appears after step 3) ── */}
+          {fotoConfirmada && (
+            <>
+              <div className="h-px bg-gray-100" />
+              <div className="animate-fadeIn">
+                <StepBadge num="4" done={fotoComprobacionConfirmada} label="Foto de Comprobación" />
+                <p className="text-gray-400 text-xs mt-1 ml-[42px]">Foto del comprobante de entrega</p>
+
+                <div className="mt-3">
+                  {!showCamComprobacion && !fotoComprobacionConfirmada && (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCamComprobacion(true)}
+                        className="w-full bg-[#8B1538] text-white py-3.5 rounded-xl hover:bg-[#A01A43] active:scale-[0.99] transition-all duration-200 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <FaCamera /> Abrir Cámara
+                      </button>
+                      <ImageDropZone
+                        isDragActive={dragActivoComprobacion}
+                        onDragOver={handleDragOver}
+                        onDragEnter={(e) => handleDragEnter(e, setDragActivoComprobacion, dragCounterComprobacion)}
+                        onDragLeave={(e) => handleDragLeave(e, setDragActivoComprobacion, dragCounterComprobacion)}
+                        onDrop={(e) => handleDrop(e, setImgComprobacion, setImgComprobacionPreview, setFotoComprobacionConfirmada, setShowCamComprobacion, 'comprobacion.jpg', setErrorArchivoComprobacion, setDragActivoComprobacion, dragCounterComprobacion)}
+                        onClick={() => fileInputComprobacionRef.current?.click()}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInputComprobacionRef.current?.click()}
+                        error={errorArchivoComprobacion}
+                        inputRef={fileInputComprobacionRef}
+                        onFileChange={(e) => handleFileUpload(e, setImgComprobacion, setImgComprobacionPreview, setFotoComprobacionConfirmada, setShowCamComprobacion, 'comprobacion.jpg', setErrorArchivoComprobacion)}
+                      />
+                    </div>
+                  )}
+
+                  {showCamComprobacion && (
+                    <div className="flex flex-col items-center animate-fadeIn">
+                      <div ref={containerRefComprobacion} className="relative w-full aspect-video border-4 border-[#8B1538] rounded-xl overflow-hidden shadow-md">
+                        <Webcam
+                          audio={false}
+                          ref={webcamRefComprobacion}
+                          videoConstraints={videoConstraints}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-2 border-2 border-white/40 border-dashed rounded-lg pointer-events-none" />
+                        <div className="absolute top-2 left-0 right-0 text-center">
+                          <span className="bg-black/50 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
+                            Coloca el comprobante dentro del marco
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3 w-full">
+                        <button
+                          type="button"
+                          onClick={() => capture(webcamRefComprobacion, containerRefComprobacion, setImgComprobacion, setImgComprobacionPreview, setFotoComprobacionConfirmada, setShowCamComprobacion, 'comprobacion.jpg')}
+                          className="flex-1 bg-[#8B1538] text-white py-3 rounded-xl hover:bg-[#A01A43] transition-colors font-semibold text-sm flex items-center justify-center gap-2"
+                        >
+                          <FaCamera /> Capturar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowCamComprobacion(false)}
+                          className="px-5 bg-gray-100 text-gray-600 py-3 rounded-xl hover:bg-gray-200 transition-colors text-sm font-medium"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {fotoComprobacionConfirmada && imgComprobacionPreview && (
+                    <div className="rounded-xl overflow-hidden border-2 border-emerald-200 animate-fadeIn">
+                      <div className="relative">
+                        <img src={imgComprobacionPreview} alt="Foto de comprobación" className="w-full h-44 object-cover" />
+                        <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1.5 shadow-md">
+                          <FaCheckCircle className="text-sm" />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2 bg-emerald-50 flex items-center justify-between">
+                        <p className="text-emerald-700 font-medium text-xs">Comprobante capturado correctamente</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFotoComprobacionConfirmada(false);
+                            setImgComprobacion(null);
+                            updatePreview(null, setImgComprobacionPreview);
+                          }}
+                          className="text-[#8B1538] text-xs font-medium hover:underline"
+                        >
+                          Cambiar foto
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Botón de Envío */}
-        <div className={`mb-4 transition-all duration-300 ${!personaSeleccionada || !fotoConfirmada || !fotoComprobacionConfirmada ? 'opacity-50' : 'opacity-100'}`}>
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${personaSeleccionada && fotoConfirmada && fotoComprobacionConfirmada ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>5</span>
-            <h3 className="text-[#8B1538] font-semibold text-sm">Finalizar Registro</h3>
-          </div>
-          {loading ? (
-            <button
-              type="button"
-              className="w-full bg-[#991B3A] text-white py-3 px-4 rounded-lg flex items-center justify-center opacity-75 cursor-not-allowed transition-all duration-300"
-              disabled
-            >
-              <FaSpinner className="animate-spin mr-2 text-lg" />
-              Procesando...
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={!personaSeleccionada || !fotoConfirmada || !fotoComprobacionConfirmada}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-base shadow-md transition-all duration-300 flex items-center justify-center ${
-                personaSeleccionada && fotoConfirmada && fotoComprobacionConfirmada
-                  ? 'bg-linear-to-r from-[#8B1538] to-[#991B3A] text-white hover:from-[#991B3A] hover:to-[#C72044] hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#991B3A] focus:ring-offset-2'
-                  : 'bg-gray-400 text-gray-600 cursor-not-allowed opacity-60'
-              }`}
-            >
-              <FaCheckCircle className="mr-2" />
-              {!personaSeleccionada ? 'Selecciona un usuario' : !fotoConfirmada ? 'Falta foto de tarjeta' : !fotoComprobacionConfirmada ? 'Falta foto de comprobación' : 'Registrar tarjeta'}
-            </button>
+            </>
           )}
-        </div>
 
-        {mensaje && (
-          <div className={`text-center p-4 rounded-lg ${mensaje.includes('✅') ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-            <p className={`font-medium ${mensaje.includes('✅') ? 'text-green-700' : 'text-red-700'}`}>{mensaje}</p>
+          <div className="h-px bg-gray-100" />
+
+          {/* ── STEP 5: Submit ── */}
+          <div>
+            <StepBadge num="5" done={!!allReady} label="Finalizar Registro" />
+            <div className="mt-3">
+              {loading ? (
+                <div className="w-full bg-[#8B1538]/90 text-white py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed">
+                  <FaSpinner className="animate-spin" />
+                  <span className="font-semibold text-sm">Procesando registro...</span>
+                </div>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!allReady}
+                  className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2
+                    ${allReady
+                      ? 'bg-[#8B1538] text-white hover:bg-[#A01A43] hover:shadow-md active:scale-[0.99] shadow-sm'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                >
+                  <FaCheckCircle />
+                  {!personaSeleccionada
+                    ? 'Primero selecciona un usuario'
+                    : !fotoConfirmada
+                      ? 'Falta foto de la tarjeta'
+                      : !fotoComprobacionConfirmada
+                        ? 'Falta foto de comprobación'
+                        : 'Registrar Tarjeta'
+                  }
+                </button>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Feedback message */}
+          {mensaje && (
+            <div className={`p-4 rounded-xl text-sm font-medium text-center animate-fadeIn
+              ${mensaje.includes('✅')
+                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                : 'bg-red-50 border border-red-200 text-red-700'}`}
+            >
+              {mensaje}
+            </div>
+          )}
+
+        </div>
       </form>
     </div>
   );

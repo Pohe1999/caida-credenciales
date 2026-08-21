@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Card background -->
+  <rect width="64" height="64" rx="14" fill="#8B1538"/>
+  <!-- ID card shape -->
+  <rect x="10" y="18" width="44" height="28" rx="4" fill="white" opacity="0.15"/>
+  <rect x="10" y="18" width="44" height="28" rx="4" stroke="white" stroke-width="2" opacity="0.9"/>
+  <!-- Photo placeholder -->
+  <rect x="16" y="24" width="12" height="16" rx="2" fill="white" opacity="0.85"/>
+  <!-- Lines (name / data) -->
+  <rect x="33" y="26" width="16" height="2.5" rx="1.2" fill="white" opacity="0.9"/>
+  <rect x="33" y="31" width="11" height="2" rx="1" fill="white" opacity="0.6"/>
+  <rect x="33" y="35" width="13" height="2" rx="1" fill="white" opacity="0.6"/>
+  <!-- Bottom strip -->
+  <rect x="10" y="39" width="44" height="7" rx="0 0 4 4" fill="white" opacity="0.08"/>
+</svg>
